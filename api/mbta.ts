@@ -450,7 +450,7 @@ interface ShapeResource {
     };
 }
 /**
- * Path a vehicle travels during service. See [GTFS `routes.txt](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
+ * Path a vehicle travels during service. See [GTFS `routes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
  */
 interface RouteResource {
     /**
@@ -2255,7 +2255,7 @@ interface Vehicle {
 }
 /**
  * Information about the different variations of service that may be run within a single route_id, including when and how often they are operated.
- * See [GTFS `route_patterns.txt](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#route_patternstxt) for the base specification.
+ * See [GTFS `route_patterns.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#route_patternstxt) for the base specification.
  */
 interface RoutePatternResource {
     /**
