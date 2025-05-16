@@ -9,6 +9,7 @@
   "dependencies": {
     "body-parser": "^2.2.0",
     "compression": "^1.8.0",
+    "eventsource": "^4.0.0",
     "express": "^5.1.0",
     "ws": "^8.18.2"
   },

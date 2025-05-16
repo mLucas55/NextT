@@ -1,13 +1,35 @@
+import { EventSource } from "eventsource";
+interface Document {
+    links?: Record<string, string>;
+    /**
+     * Included resources
+     */
+    included?: Resource[];
+    data?: Resource | Resource[];
+}
+interface Resource {
+    /**
+     * The JSON-API resource type
+     */
+    type: string;
+    relationships?: Record<string, Document>
+    links?: Record<string, string>;
+    /**
+     * The JSON-API resource ID
+     */
+    id: string;
+    attributes?: Record<string, any>;
+}
 /**
  * A schedule is the arrival drop off (`*\/attributes/drop_off_type`) time (`*\/attributes/arrival_time`) and departure pick up (`*\/attributes/pickup_type`) time (`*\/attributes/departure_time`) to/from a stop (`*\/relationships/stop/data/id`) at a given sequence (`*\/attributes/stop_sequence`) along a trip (`*\/relationships/trip/data/id`) going in a direction (`*\/attributes/direction_id`) on a route (`*\/relationships/route/data/id`) when the trip is following a service (`*\/relationships/service/data/id`) to determine when it is active.
  *
  * See [GTFS `stop_times.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt) for base specification.
  */
-interface ScheduleResource {
+interface ScheduleResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         trip?: {
             links?: {
@@ -24,11 +46,11 @@ interface ScheduleResource {
                 /**
                  * Type of related trip resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related trip resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         stop?: {
@@ -46,11 +68,11 @@ interface ScheduleResource {
                 /**
                  * Type of related stop resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related stop resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         route?: {
@@ -68,11 +90,11 @@ interface ScheduleResource {
                 /**
                  * Type of related route resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         prediction?: {
@@ -90,11 +112,11 @@ interface ScheduleResource {
                 /**
                  * Type of related prediction resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related prediction resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -102,7 +124,7 @@ interface ScheduleResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * | Value   | `*\/attributes/arrival_time` and `*\/attributes/departure_time` |
@@ -168,11 +190,11 @@ interface ScheduleResource {
 /**
  * Representation of the journey of a particular vehicle through a given set of stops. See [GTFS `trips.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt)
  */
-interface TripResource {
+interface TripResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         shape?: {
             links?: {
@@ -189,11 +211,11 @@ interface TripResource {
                 /**
                  * Type of related shape resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related shape resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         service?: {
@@ -211,11 +233,11 @@ interface TripResource {
                 /**
                  * Type of related service resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related service resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         routePattern?: {
@@ -233,11 +255,11 @@ interface TripResource {
                 /**
                  * Type of related route_pattern resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route_pattern resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         route?: {
@@ -255,11 +277,11 @@ interface TripResource {
                 /**
                  * Type of related route resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         occupancy?: {
@@ -277,11 +299,11 @@ interface TripResource {
                 /**
                  * Type of related occupancy resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related occupancy resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -289,7 +311,7 @@ interface TripResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * Indicator of wheelchair accessibility: `0`, `1`, `2`
@@ -345,7 +367,7 @@ interface TripResource {
 /**
  * A JSON-API document with a single {@link FacilityResource} resource
  */
-interface Facility {
+interface Facility extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -355,22 +377,13 @@ interface Facility {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: FacilityResource;
 }
 /**
  * A JSON-API document with a single {@link StopResource} resource
  */
-interface Stop {
+interface Stop extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -380,22 +393,13 @@ interface Stop {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: StopResource;
 }
 /**
  * A page of {@link FacilityResource} results
  */
-interface Facilities {
+interface Facilities extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -419,6 +423,10 @@ interface Facilities {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link FacilityResource} objects
      */
     data: FacilityResource[];
@@ -426,17 +434,17 @@ interface Facilities {
 /**
  * Sequence of geographic points representing a path vehicles will travel on a trip. See [GTFS `shapes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#shapestxt).
  */
-interface ShapeResource {
+interface ShapeResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {};
     links?: {};
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * The sequence of points in [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm).
@@ -452,11 +460,11 @@ interface ShapeResource {
 /**
  * Path a vehicle travels during service. See [GTFS `routes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
  */
-interface RouteResource {
+interface RouteResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         routePatterns?: {
             links?: {
@@ -473,11 +481,11 @@ interface RouteResource {
                 /**
                  * Type of related route_patterns resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route_patterns resource id
                  */
-                id?: string;
+                id: string;
             }[];
         };
         line?: {
@@ -495,11 +503,11 @@ interface RouteResource {
                 /**
                  * Type of related line resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related line resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         agency?: {
@@ -517,11 +525,11 @@ interface RouteResource {
                 /**
                  * Type of related agency resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related agency resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -529,7 +537,7 @@ interface RouteResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * | Value | Name          | Example    |
@@ -577,7 +585,7 @@ interface RouteResource {
 /**
  * A page of {@link RoutePatternResource} results
  */
-interface RoutePatterns {
+interface RoutePatterns extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -601,6 +609,10 @@ interface RoutePatterns {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link RoutePatternResource} objects
      */
     data: RoutePatternResource[];
@@ -608,7 +620,7 @@ interface RoutePatterns {
 /**
  * A page of {@link VehicleResource} results
  */
-interface Vehicles {
+interface Vehicles extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -631,6 +643,10 @@ interface Vehicles {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link VehicleResource} objects
      */
@@ -647,11 +663,11 @@ interface Vehicles {
  *
  * The lack of an `ELEVATOR` MAY NOT make a stop wheelchair inaccessible.  Riders should check `/stops/{id}` `/data/attributes/wheelchair_boarding` is `1` to guarantee a path is available from the station entrance to the stop or `0` if it MAY be accessible.  Completely avoid `2` as that is guaranteed to be INACCESSIBLE.
  */
-interface FacilityResource {
+interface FacilityResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         stop?: {
             links?: {
@@ -668,11 +684,11 @@ interface FacilityResource {
                 /**
                  * Type of related stop resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related stop resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -680,7 +696,7 @@ interface FacilityResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * The type of the facility.
@@ -744,11 +760,11 @@ interface FacilityResource {
  * | `*\/attributes/lifecycle`     | Enumerated, machine-readable description of `*\/attributes/active_period` |
  * | `*\/attributes/timeframe`     | Human-readable description of `*\/attributes/active_period`               |
  */
-interface AlertResource {
+interface AlertResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         facility?: {
             links?: {
@@ -765,11 +781,11 @@ interface AlertResource {
                 /**
                  * Type of related facility resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related facility resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -777,7 +793,7 @@ interface AlertResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * A URL for extra details, such as outline construction or maintenance plans.
@@ -961,7 +977,7 @@ interface AlertResource {
 /**
  * A page of {@link LineResource} results
  */
-interface Lines {
+interface Lines extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -984,6 +1000,10 @@ interface Lines {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link LineResource} objects
      */
@@ -1080,11 +1100,11 @@ interface InformedEntity {
  * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `TripDescriptor`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-tripdescriptor)
  * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate)
  */
-interface PredictionResource {
+interface PredictionResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         vehicle?: {
             links?: {
@@ -1101,11 +1121,11 @@ interface PredictionResource {
                 /**
                  * Type of related vehicle resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related vehicle resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         trip?: {
@@ -1123,11 +1143,11 @@ interface PredictionResource {
                 /**
                  * Type of related trip resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related trip resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         stop?: {
@@ -1145,11 +1165,11 @@ interface PredictionResource {
                 /**
                  * Type of related stop resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related stop resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         schedule?: {
@@ -1167,11 +1187,11 @@ interface PredictionResource {
                 /**
                  * Type of related schedule resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related schedule resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         route?: {
@@ -1189,11 +1209,11 @@ interface PredictionResource {
                 /**
                  * Type of related route resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         alerts?: {
@@ -1211,11 +1231,11 @@ interface PredictionResource {
                 /**
                  * Type of related alerts resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related alerts resource id
                  */
-                id?: string;
+                id: string;
             }[];
         };
     };
@@ -1223,7 +1243,7 @@ interface PredictionResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * | Value            | Description |
@@ -1334,11 +1354,11 @@ interface PredictionResource {
 /**
  * Physical location where transit can pick-up or drop-off passengers. See https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt for more details and https://github.com/mbta/gtfs-documentation/blob/master/reference/gtfs.md#stopstxt for specific extensions.
  */
-interface StopResource {
+interface StopResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         parentStation?: {
             links?: {
@@ -1355,11 +1375,11 @@ interface StopResource {
                 /**
                  * Type of related parent_station resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related parent_station resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -1367,7 +1387,7 @@ interface StopResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * Whether there are any vehicles with wheelchair boarding or paths to stops that are wheelchair acessible: 0, 1, 2.
@@ -1452,7 +1472,7 @@ interface StopResource {
 /**
  * A page of {@link ScheduleResource} results
  */
-interface Schedules {
+interface Schedules extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -1476,6 +1496,10 @@ interface Schedules {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link ScheduleResource} objects
      */
     data: ScheduleResource[];
@@ -1483,17 +1507,17 @@ interface Schedules {
 /**
  * Live data about a given facility.
  */
-interface LiveFacilityResource {
+interface LiveFacilityResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {};
     links?: {};
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * Time of last update
@@ -1508,7 +1532,7 @@ interface LiveFacilityResource {
 /**
  * A page of {@link StopResource} results
  */
-interface Stops {
+interface Stops extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -1532,6 +1556,10 @@ interface Stops {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link StopResource} objects
      */
     data: StopResource[];
@@ -1539,7 +1567,7 @@ interface Stops {
 /**
  * A JSON-API document with a single {@link TripResource} resource
  */
-interface Trip {
+interface Trip extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1549,16 +1577,7 @@ interface Trip {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: TripResource;
 }
 /**
@@ -1592,7 +1611,7 @@ interface NotFound {
 /**
  * A JSON-API document with a single {@link LiveFacilityResource} resource
  */
-interface LiveFacility {
+interface LiveFacility extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1602,22 +1621,13 @@ interface LiveFacility {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: LiveFacilityResource;
 }
 /**
  * A JSON-API document with a single {@link AlertResource} resource
  */
-interface Alert {
+interface Alert extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1627,22 +1637,13 @@ interface Alert {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: AlertResource;
 }
 /**
  * A page of {@link AlertResource} results
  */
-interface Alerts {
+interface Alerts extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -1665,6 +1666,10 @@ interface Alerts {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link AlertResource} objects
      */
@@ -1673,7 +1678,7 @@ interface Alerts {
 /**
  * A page of {@link ServiceResource} results
  */
-interface Services {
+interface Services extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -1696,6 +1701,10 @@ interface Services {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link ServiceResource} objects
      */
@@ -1717,7 +1726,7 @@ interface FacilityProperty {
 /**
  * A page of {@link ShapeResource} results
  */
-interface Shapes {
+interface Shapes extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -1741,6 +1750,10 @@ interface Shapes {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link ShapeResource} objects
      */
     data: ShapeResource[];
@@ -1748,17 +1761,17 @@ interface Shapes {
 /**
  * An expected or predicted level of occupancy for a given trip.
  */
-interface OccupancyResource {
+interface OccupancyResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {};
     links?: {};
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * The degree of passenger occupancy for the vehicle. See [GTFS-realtime OccupancyStatus](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-vehiclestopstatus).
@@ -1783,7 +1796,7 @@ interface OccupancyResource {
 /**
  * A JSON-API document with a single {@link RouteResource} resource
  */
-interface Route {
+interface Route extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1793,22 +1806,13 @@ interface Route {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: RouteResource;
 }
 /**
  * A JSON-API document with a single {@link ShapeResource} resource
  */
-interface Shape {
+interface Shape extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1818,26 +1822,17 @@ interface Shape {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: ShapeResource;
 }
 /**
  * Current state of a vehicle on a trip.
  */
-interface VehicleResource {
+interface VehicleResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         trip?: {
             links?: {
@@ -1854,11 +1849,11 @@ interface VehicleResource {
                 /**
                  * Type of related trip resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related trip resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         stop?: {
@@ -1876,11 +1871,11 @@ interface VehicleResource {
                 /**
                  * Type of related stop resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related stop resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         route?: {
@@ -1898,11 +1893,11 @@ interface VehicleResource {
                 /**
                  * Type of related route resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -1910,7 +1905,7 @@ interface VehicleResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * Time at which vehicle information was last updated. Format is ISO8601.
@@ -2024,7 +2019,7 @@ interface Forbidden {
 /**
  * A page of {@link PredictionResource} results
  */
-interface Predictions {
+interface Predictions extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -2048,6 +2043,10 @@ interface Predictions {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link PredictionResource} objects
      */
     data: PredictionResource[];
@@ -2055,17 +2054,17 @@ interface Predictions {
 /**
  * Service represents a set of dates on which trips run.
  */
-interface ServiceResource {
+interface ServiceResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {};
     links?: {};
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         validDays?: number[];
         /**
@@ -2144,7 +2143,7 @@ interface TooManyRequests {
 /**
  * A page of {@link TripResource} results
  */
-interface Trips {
+interface Trips extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -2167,6 +2166,10 @@ interface Trips {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link TripResource} objects
      */
@@ -2175,7 +2178,7 @@ interface Trips {
 /**
  * A page of {@link RouteResource} results
  */
-interface Routes {
+interface Routes extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -2199,6 +2202,10 @@ interface Routes {
         first?: string;
     };
     /**
+     * Included resources
+     */
+    included?: Resource[];
+    /**
      * Content with {@link RouteResource} objects
      */
     data: RouteResource[];
@@ -2206,7 +2213,7 @@ interface Routes {
 /**
  * A JSON-API document with a single {@link ServiceResource} resource
  */
-interface Service {
+interface Service extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2216,22 +2223,13 @@ interface Service {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: ServiceResource;
 }
 /**
  * A JSON-API document with a single {@link VehicleResource} resource
  */
-interface Vehicle {
+interface Vehicle extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2241,27 +2239,18 @@ interface Vehicle {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: VehicleResource;
 }
 /**
  * Information about the different variations of service that may be run within a single route_id, including when and how often they are operated.
  * See [GTFS `route_patterns.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#route_patternstxt) for the base specification.
  */
-interface RoutePatternResource {
+interface RoutePatternResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {
         route?: {
             links?: {
@@ -2278,11 +2267,11 @@ interface RoutePatternResource {
                 /**
                  * Type of related route resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related route resource id
                  */
-                id?: string;
+                id: string;
             };
         };
         representativeTrip?: {
@@ -2300,11 +2289,11 @@ interface RoutePatternResource {
                 /**
                  * Type of related representative_trip resource
                  */
-                type?: string;
+                type: string;
                 /**
                  * Related representative_trip resource id
                  */
-                id?: string;
+                id: string;
             };
         };
     };
@@ -2312,7 +2301,7 @@ interface RoutePatternResource {
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * Explains how common the route pattern is. For the MBTA, this is within the context of the entire route. Current valid values are:
@@ -2367,7 +2356,7 @@ interface RoutePatternResource {
 /**
  * A JSON-API document with a single {@link RoutePatternResource} resource
  */
-interface RoutePattern {
+interface RoutePattern extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2377,16 +2366,7 @@ interface RoutePattern {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: RoutePatternResource;
 }
 /**
@@ -2411,7 +2391,7 @@ interface NotAcceptable {
 /**
  * A page of {@link LiveFacilityResource} results
  */
-interface LiveFacilities {
+interface LiveFacilities extends Resource {
     links?: {
         /**
          * Link to this page of results
@@ -2434,6 +2414,10 @@ interface LiveFacilities {
          */
         first?: string;
     };
+    /**
+     * Included resources
+     */
+    included?: Resource[];
     /**
      * Content with {@link LiveFacilityResource} objects
      */
@@ -2470,17 +2454,17 @@ type Activity = string;
 /**
  * Line represents a combination of routes
  */
-interface LineResource {
+interface LineResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type?: string;
+    type: string;
     relationships?: {};
     links?: {};
     /**
      * The JSON-API resource ID
      */
-    id?: string;
+    id: string;
     attributes?: {
         /**
          * This field can be used to specify a legible color to use for text drawn against a background of line_color. The color must be provided as a six-character hexadecimal number, for example, `FFD700`.
@@ -2507,7 +2491,7 @@ interface LineResource {
 /**
  * A JSON-API document with a single {@link LineResource} resource
  */
-interface Line {
+interface Line extends Document {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2517,22 +2501,13 @@ interface Line {
     /**
      * Included resources
      */
-    included?: {
-        /**
-         * The JSON-API resource type
-         */
-        type?: string;
-        /**
-         * The JSON-API resource ID
-         */
-        id?: string;
-    }[];
+    included?: Resource[];
     data: LineResource;
 }
 const BASE_URL = "https://api-v3.mbta.com";
 interface RequestOptions {
     query?: Record<string, any>;
-    headers?: HeadersInit;
+    headers?: Record<string, string>;
 }
 interface getVehicleOptions {
     /**
@@ -3916,18 +3891,23 @@ class Client {
             this.key = null;
         }
     }
-    async request(endpoint: string, options?: RequestOptions) {
+
+    #getRequest(endpoint: string, options?: RequestOptions) {
         const url = new URL(endpoint, BASE_URL);
         if (options?.query) {
             for (const key in options.query) {
                 url.searchParams.append(key, options.query[key]);
             }
         }
-        const headers = new Headers(options?.headers);
-        headers.set('accept', 'application/vnd.api+json');
+        const headers = { ...options?.headers};
         if (this.key !== null) {
-            headers.set('x-api-key', this.key);
+            headers['x-api-key'] = this.key;
         }
+        return { url, headers };
+    }
+    async request(endpoint: string, options?: RequestOptions) {
+        const { url, headers } = this.#getRequest(endpoint, options);
+        headers['accept'] ='application/vnd.api+json';
         const response = await fetch(url, { headers });
         if (response.ok) {
             return await response.json();
@@ -3935,35 +3915,43 @@ class Client {
             throw new Error(await response.text());
         }
     }
+    stream(endpoint: string, options?: RequestOptions) {
+        const { url, headers } = this.#getRequest(endpoint, options);
+        headers['accept'] = 'text/event-stream';
+        const es = new EventSource(url, {
+            fetch: (input, init) => fetch(input, { ...init, headers: { ...headers, ...init.headers } }),
+        });
+        return es;
+    }
     /**
      * Single vehicle (bus, ferry, or train)
-     *
+     * 
      * ## Direction
-     *
+     * 
      * ### World
-     *
+     * 
      * To figure out which way the vehicle is pointing at the location, use `/data/attributes/bearing`.  This can be the compass bearing, or the direction towards the next stop or intermediate location.
-     *
+     * 
      * ### Trip
-     *
+     * 
      * To get the direction around the stops in the trip use `/data/attributes/direction_id`.
-     *
+     * 
      * ## Location
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/attributes/latitude` and `/data/attributes/longitude` to get the location of a vehicle.
-     *
+     * 
      * ### Trip
-     *
+     * 
      * Use `/data/attributes/current_stop_sequence` to get the stop number along the trip.  Useful for linear stop indicators.  Position relative to the current stop is in `/data/attributes/current_status`.
-     *
+     * 
      * ## Movement
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/attributes/speed` to get the speed of the vehicle in meters per second.
-     *
+     * 
      * @param id Unique identifier for a vehicle
      * @param options Options
      */
@@ -3972,67 +3960,70 @@ class Client {
     }
     /**
      * List of vehicles (buses, ferries, and trains)
-     *
+     * 
      * ## Direction
-     *
+     * 
      * ### World
-     *
+     * 
      * To figure out which way the vehicle is pointing at the location, use `/data/{index}/attributes/bearing`.  This can be the compass bearing, or the direction towards the next stop or intermediate location.
-     *
+     * 
      * ### Trip
-     *
+     * 
      * To get the direction around the stops in the trip use `/data/{index}/attributes/direction_id`.
-     *
+     * 
      * ## Location
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/{index}/attributes/latitude` and `/data/{index}/attributes/longitude` to get the location of a vehicle.
-     *
+     * 
      * ### Trip
-     *
+     * 
      * Use `/data/{index}/attributes/current_stop_sequence` to get the stop number along the trip.  Useful for linear stop indicators.  Position relative to the current stop is in `/data/{index}/attributes/current_status`.
-     *
+     * 
      * ## Movement
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/{index}/attributes/speed` to get the speed of the vehicle in meters per second.
-     *
+     * 
      * @param options Options
      */
     async getVehicles(options?: getVehiclesOptions): Promise<Vehicles> {
         return await this.request('/vehicles', { query: options });
     }
+    streamVehicles(options?: getVehiclesOptions): EventSource {
+        return this.stream(`/vehicles`, { query: options })
+    }
     /**
      * Single trip - the journey of a particular vehicle through a set of stops
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Wheelchair accessibility (`/data/attributes/wheelchair_accessible`) [as defined in GTFS](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt):
-     *
+     * 
      * | Value | Meaning                                            |
      * |-------|----------------------------------------------------|
      * | `0`   | No information                                     |
      * | `1`   | Accessible (at stops allowing wheelchair_boarding) |
      * | `2`   | Inaccessible                                       |
-     *
-     *
+     * 
+     * 
      * ## Grouping
-     *
+     * 
      * Multiple trips **may** be grouped together using `/data/attributes/block_id`. A block represents a series of trips scheduled to be operated by the same vehicle.
-     *
+     * 
      * ## Naming
-     *
+     * 
      * There are 3 names associated with a trip.
-     *
+     * 
      * | API Field                   | GTFS              | Show users? |
      * |-----------------------------|-------------------|-------------|
      * | `/data/attributes/headsign` | `trip_headsign`   | Yes         |
      * | `/data/attributes/name`     | `trip_short_name` | Yes         |
      * | `/data/id`                  | `trip_id`         | No          |
-     *
-     *
+     * 
+     * 
      * @param id Unique identifier for a trip
      * @param options Options
      */
@@ -4041,65 +4032,68 @@ class Client {
     }
     /**
      * **NOTE:** A id, route, route_pattern, or name filter **MUST** be present for any trips to be returned.
-     *
+     * 
      * List of trips, the journies of a particular vehicle through a set of stops on a primary `route` and zero or more alternative `route`s that can be filtered on.
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Wheelchair accessibility (`/data/{index}/attributes/wheelchair_accessible`) [as defined in GTFS](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt):
-     *
+     * 
      * | Value | Meaning                                            |
      * |-------|----------------------------------------------------|
      * | `0`   | No information                                     |
      * | `1`   | Accessible (at stops allowing wheelchair_boarding) |
      * | `2`   | Inaccessible                                       |
-     *
-     *
+     * 
+     * 
      * ## Grouping
-     *
+     * 
      * Multiple trips **may** be grouped together using `/data/{index}/attributes/block_id`. A block represents a series of trips scheduled to be operated by the same vehicle.
-     *
+     * 
      * ## Naming
-     *
+     * 
      * There are 3 names associated with a trip.
-     *
+     * 
      * | API Field                   | GTFS              | Show users? |
      * |-----------------------------|-------------------|-------------|
      * | `/data/attributes/headsign` | `trip_headsign`   | Yes         |
      * | `/data/attributes/name`     | `trip_short_name` | Yes         |
      * | `/data/id`                  | `trip_id`         | No          |
-     *
-     *
+     * 
+     * 
      * @param options Options
      */
     async getTrips(options?: getTripsOptions): Promise<Trips> {
         return await this.request('/trips', { query: options });
     }
+    streamTrips(options?: getTripsOptions): EventSource {
+        return this.stream(`/trips`, { query: options })
+    }
     /**
      * Detail for a specific stop.
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Wheelchair boarding (`/data/attributes/wheelchair_boarding`) corresponds to [GTFS wheelchair_boarding](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt). The MBTA handles parent station inheritance itself, so value can be treated simply:
-     *
+     * 
      * | Value | Meaning                                       |
      * |-------|-----------------------------------------------|
      * | `0`   | No Information                                |
      * | `1`   | Accessible (if trip is wheelchair accessible) |
      * | `2`   | Inaccessible                                  |
-     *
-     *
+     * 
+     * 
      * ## Location
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/attributes/latitude` and `/data/attributes/longitude` to get the location of a stop.
-     *
+     * 
      * ### Entrance
-     *
+     * 
      * The stop may be inside a station.  If `/data/relationships/parent_station/data/id` is present, you should look up the parent station (`/stops/{parent_id}`) and use its location to give direction first to the parent station and then route from there to the stop.
-     *
-     *
+     * 
+     * 
      * @param id Unique identifier for stop
      * @param options Options
      */
@@ -4108,47 +4102,50 @@ class Client {
     }
     /**
      * List stops.
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Wheelchair boarding (`/data/{index}/attributes/wheelchair_boarding`) corresponds to [GTFS wheelchair_boarding](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt). The MBTA handles parent station inheritance itself, so value can be treated simply:
-     *
+     * 
      * | Value | Meaning                                       |
      * |-------|-----------------------------------------------|
      * | `0`   | No Information                                |
      * | `1`   | Accessible (if trip is wheelchair accessible) |
      * | `2`   | Inaccessible                                  |
-     *
-     *
+     * 
+     * 
      * ## Location
-     *
+     * 
      * ### World
-     *
+     * 
      * Use `/data/{index}/attributes/latitude` and `/data/{index}/attributes/longitude` to get the location of a stop.
-     *
+     * 
      * ### Entrance
-     *
+     * 
      * The stop may be inside a station.  If `/data/{index}/relationships/parent_station/data/id` is present, you should look up the parent station (`/stops/{parent_id}`) and use its location to give direction first to the parent station and then route from there to the stop.
-     *
-     *
-     *
+     * 
+     * 
+     * 
      * ### Nearby
-     *
+     * 
      * The `filter[latitude]` and `filter[longitude]` can be used together to find any stops near that latitude and longitude.  The distance is in degrees as if latitude and longitude were on a flat 2D plane and normal Pythagorean distance was calculated.  Over the region MBTA serves, `0.02` degrees is approximately `1` mile. How close is considered nearby, is controlled by `filter[radius]`, which default to `0.01` degrees (approximately a half mile).
      * @param options Options
      */
     async getStops(options?: getStopsOptions): Promise<Stops> {
         return await this.request('/stops', { query: options });
     }
+    streamStops(options?: getStopsOptions): EventSource {
+        return this.stream(`/stops`, { query: options })
+    }
     /**
      * Detail of a particular shape.
-     *
+     * 
      * ## Vertices
-     *
+     * 
      * ### World
-     *
+     * 
      * `/data/attributes/polyline` is in [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm), which encodes the latitude and longitude of a sequence of points in the shape.
-     *
+     * 
      * @param id Unique identifier for shape
      * @param options Options
      */
@@ -4157,19 +4154,22 @@ class Client {
     }
     /**
      * **NOTE:** `filter[route]` **MUST** be given for any shapes to be returned.
-     *
+     * 
      * List of shapes.
-     *
+     * 
      * ## Vertices
-     *
+     * 
      * ### World
-     *
+     * 
      * `/data/{index}/attributes/polyline` is in [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm), which encodes the latitude and longitude of a sequence of points in the shape.
-     *
+     * 
      * @param options Options
      */
     async getShapes(options: getShapesOptions): Promise<Shapes> {
         return await this.request('/shapes', { query: options });
+    }
+    streamShapes(options: getShapesOptions): EventSource {
+        return this.stream(`/shapes`, { query: options })
     }
     /**
      * Single service, which represents the days of the week, as well as extra days, that a trip is valid.
@@ -4186,58 +4186,64 @@ class Client {
     async getServices(options?: getServicesOptions): Promise<Services> {
         return await this.request('/services', { query: options });
     }
+    streamServices(options?: getServicesOptions): EventSource {
+        return this.stream(`/services`, { query: options })
+    }
     /**
      * **NOTE:** `filter[route]`, `filter[stop]`, or `filter[trip]` **MUST** be present for any schedules to be returned.
-     *
+     * 
      * List of schedules.  To get a realtime prediction instead of the scheduled times, use `/predictions`.
-     *
+     * 
      * A schedule is the arrival drop off (`/data/{index}/attributes/drop_off_type`) time (`/data/{index}/attributes/arrival_time`) and departure pick up (`/data/{index}/attributes/pickup_type`) time (`/data/{index}/attributes/departure_time`) to/from a stop (`/data/{index}/relationships/stop/data/id`) at a given sequence (`/data/{index}/attributes/stop_sequence`) along a trip (`/data/{index}/relationships/trip/data/id`) going in a direction (`/data/{index}/attributes/direction_id`) on a route (`/data/{index}/relationships/route/data/id`) when the trip is following a service (`/data/{index}/relationships/service/data/id`) to determine when it is active.
-     *
+     * 
      * See [GTFS `stop_times.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt) for base specification.
-     *
-     *
+     * 
+     * 
      * ## When a vehicle is scheduled to be at a stop
-     *
+     * 
      * `/schedules?filter[stop]=STOP_ID`
-     *
+     * 
      * ## The schedule for one route
-     *
+     * 
      * `/schedules?filter[route]=ROUTE_ID`
-     *
+     * 
      * ### When a route is open
-     *
+     * 
      * Query for the `first` and `last` stops on the route.
-     *
+     * 
      * `/schedules?filter[route]=ROUTE_ID&filter[stop_sequence]=first,last`
-     *
+     * 
      * ## The schedule for a whole trip
-     *
+     * 
      * `/schedule?filter[trip]=TRIP_ID`
-     *
+     * 
      * @param options Options
      */
     async getSchedules(options?: getSchedulesOptions): Promise<Schedules> {
         return await this.request('/schedules', { query: options });
     }
+    streamSchedules(options?: getSchedulesOptions): EventSource {
+        return this.stream(`/schedules`, { query: options })
+    }
     /**
      * Show a particular route by the route's id.
-     *
+     * 
      * ## Names and Descriptions
-     *
+     * 
      * There are 3 attributes with increasing details for naming and describing the route.
-     *
+     * 
      * 1. `/data/attributes/short_name`
      * 2. `/data/attributes/long_name`
      * 3. `/data/attributes/description`
-     *
+     * 
      * ## Directions
-     *
+     * 
      * `/data/attributes/direction_names` is the only place to convert the `direction_id` used throughout the rest of the API to human-readable names.
-     *
+     * 
      * ## Type
-     *
+     * 
      * `/data/attributes/type` corresponds to [GTFS `routes.txt` `route_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
-     *
+     * 
      * | Value | Name          | Example    |
      * |-------|---------------|------------|
      * | `0`   | Light Rail    | Green Line |
@@ -4245,8 +4251,8 @@ class Client {
      * | `2`   | Commuter Rail |            |
      * | `3`   | Bus           |            |
      * | `4`   | Ferry         |            |
-     *
-     *
+     * 
+     * 
      * @param id Unique identifier for route
      * @param options Options
      */
@@ -4255,23 +4261,23 @@ class Client {
     }
     /**
      * List of routes.
-     *
+     * 
      * ## Names and Descriptions
-     *
+     * 
      * There are 3 attributes with increasing details for naming and describing the route.
-     *
+     * 
      * 1. `/data/{index}/attributes/short_name`
      * 2. `/data/{index}/attributes/long_name`
      * 3. `/data/{index}/attributes/description`
-     *
+     * 
      * ## Directions
-     *
+     * 
      * `/data/{index}/attributes/direction_names` is the only place to convert the `direction_id` used throughout the rest of the API to human-readable names.
-     *
+     * 
      * ## Type
-     *
+     * 
      * `/data/{index}/attributes/type` corresponds to [GTFS `routes.txt` `route_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
-     *
+     * 
      * | Value | Name          | Example    |
      * |-------|---------------|------------|
      * | `0`   | Light Rail    | Green Line |
@@ -4279,22 +4285,25 @@ class Client {
      * | `2`   | Commuter Rail |            |
      * | `3`   | Bus           |            |
      * | `4`   | Ferry         |            |
-     *
-     *
+     * 
+     * 
      * @param options Options
      */
     async getRoutes(options?: getRoutesOptions): Promise<Routes> {
         return await this.request('/routes', { query: options });
     }
+    streamRoutes(options?: getRoutesOptions): EventSource {
+        return this.stream(`/routes`, { query: options })
+    }
     /**
      * Show a particular route_pattern by the route's id.
-     *
+     * 
      * Route patterns are used to describe the subsets of a route, representing different possible patterns of where trips may serve. For example, a bus route may have multiple branches, and each branch may be modeled as a separate route pattern per direction. Hierarchically, the route pattern level may be considered to be larger than the trip level and smaller than the route level.
-     *
+     * 
      * For most MBTA modes, a route pattern will typically represent a unique set of stops that may be served on a route-trip combination. Seasonal schedule changes may result in trips within a route pattern having different routings. In simple changes, such a single bus stop removed or added between one schedule rating and the next (for example, between the Summer and Fall schedules), trips will be maintained on the same route_pattern_id. If the changes are significant, a new route_pattern_id may be introduced.
-     *
+     * 
      * For Commuter Rail, express or skip-stop trips use the same route pattern as local trips. Some branches do have multiple route patterns when the train takes a different path. For example, `CR-Providence` has two route patterns per direction, one for the Wickford Junction branch and the other for the Stoughton branch.
-     *
+     * 
      * @param id Unique identifier for route_pattern
      * @param options Options
      */
@@ -4303,51 +4312,57 @@ class Client {
     }
     /**
      * List of route patterns.
-     *
+     * 
      * Route patterns are used to describe the subsets of a route, representing different possible patterns of where trips may serve. For example, a bus route may have multiple branches, and each branch may be modeled as a separate route pattern per direction. Hierarchically, the route pattern level may be considered to be larger than the trip level and smaller than the route level.
-     *
+     * 
      * For most MBTA modes, a route pattern will typically represent a unique set of stops that may be served on a route-trip combination. Seasonal schedule changes may result in trips within a route pattern having different routings. In simple changes, such a single bus stop removed or added between one schedule rating and the next (for example, between the Summer and Fall schedules), trips will be maintained on the same route_pattern_id. If the changes are significant, a new route_pattern_id may be introduced.
-     *
+     * 
      * For Commuter Rail, express or skip-stop trips use the same route pattern as local trips. Some branches do have multiple route patterns when the train takes a different path. For example, `CR-Providence` has two route patterns per direction, one for the Wickford Junction branch and the other for the Stoughton branch.
-     *
+     * 
      * @param options Options
      */
     async getRoutePatterns(options?: getRoutePatternsOptions): Promise<RoutePattern> {
         return await this.request('/routepatterns', { query: options });
     }
+    streamRoutePatterns(options?: getRoutePatternsOptions): EventSource {
+        return this.stream(`/routepatterns`, { query: options })
+    }
     /**
      * **NOTE:** A filter **MUST** be present for any predictions to be returned.
-     *
+     * 
      * List of predictions for trips.  To get the scheduled times instead of the predictions, use `/schedules`.
-     *
+     * 
      * The predicted arrival time (`//data/{index}/attributes/arrival_time`) and departure time (`/data/{index}/attributes/departure_time`) to/from a stop (`/data/{index}/relationships/stop/data/id`) at a given sequence (`/data/{index}/attriutes/stop_sequence`) along a trip (`/data/{index}/relationships/trip/data/id`) going a direction (`/data/{index}/attributes/direction_id`) along a route (`/data/{index}/relationships/route/data/id`).
-     *
+     * 
      * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `TripDescriptor`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-tripdescriptor)
      * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate)
-     *
-     *
+     * 
+     * 
      * ## When a vehicle is predicted to be at a stop
-     *
+     * 
      * `/predictions?filter[stop]=STOP_ID`
-     *
+     * 
      * ## The predicted schedule for one route
-     *
+     * 
      * `/predictions?filter[route]=ROUTE_ID`
-     *
+     * 
      * ## The predicted schedule for a whole trip
-     *
+     * 
      * `/predictions?filter[trip]=TRIP_ID`
-     *
+     * 
      * @param options Options
      */
     async getPredictions(options?: getPredictionsOptions): Promise<Predictions> {
         return await this.request('/predictions', { query: options });
     }
+    streamPredictions(options?: getPredictionsOptions): EventSource {
+        return this.stream(`/predictions`, { query: options })
+    }
     /**
      * List live parking data for specific parking facility
-     *
+     * 
      * Live data about a given facility.
-     *
+     * 
      * @param id Unique identifier for facility
      * @param options Options
      */
@@ -4356,13 +4371,16 @@ class Client {
     }
     /**
      * Live Facility Data
-     *
+     * 
      * Live data about a given facility.
-     *
+     * 
      * @param options Options
      */
     async getLiveFacilities(options?: getLiveFacilitiesOptions): Promise<LiveFacility> {
         return await this.request('/livefacilities', { query: options });
+    }
+    streamLiveFacilities(options?: getLiveFacilitiesOptions): EventSource {
+        return this.stream(`/livefacilities`, { query: options })
     }
     /**
      * Single line, which represents a combination of routes.
@@ -4379,19 +4397,22 @@ class Client {
     async getLines(options?: getLinesOptions): Promise<Lines> {
         return await this.request('/lines', { query: options });
     }
+    streamLines(options?: getLinesOptions): EventSource {
+        return this.stream(`/lines`, { query: options })
+    }
     /**
      * Specific Escalator or Elevator
-     *
+     * 
      * Amenities at a station stop (`/data/{index}/relationships/stop`) such as elevators, escalators, parking lots, and bike storage.
-     *
+     * 
      * An [MBTA extension](https://groups.google.com/forum/#!topic/gtfs-changes/EzC5m9k45pA).  This spec is not yet finalized.
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Riders with limited mobility can search any facility, either `ELEVATOR` or `ESCALATOR`, while riders that need wheelchair access can search for `ELEVATOR` only.
-     *
+     * 
      * The lack of an `ELEVATOR` MAY NOT make a stop wheelchair inaccessible.  Riders should check `/stops/{id}` `/data/attributes/wheelchair_boarding` is `1` to guarantee a path is available from the station entrance to the stop or `0` if it MAY be accessible.  Completely avoid `2` as that is guaranteed to be INACCESSIBLE.
-     *
+     * 
      * @param id Unique identifier for facility
      * @param options Options
      */
@@ -4400,33 +4421,36 @@ class Client {
     }
     /**
      * List Escalators and Elevators
-     *
+     * 
      * Amenities at a station stop (`/data/relationships/stop`) such as elevators, escalators, parking lots, and bike storage.
-     *
+     * 
      * An [MBTA extension](https://groups.google.com/forum/#!topic/gtfs-changes/EzC5m9k45pA).  This spec is not yet finalized.
-     *
+     * 
      * ## Accessibility
-     *
+     * 
      * Riders with limited mobility can search any facility, either `ELEVATOR` or `ESCALATOR`, while riders that need wheelchair access can search for `ELEVATOR` only.
-     *
+     * 
      * The lack of an `ELEVATOR` MAY NOT make a stop wheelchair inaccessible.  Riders should check `/stops/{id}` `/data/attributes/wheelchair_boarding` is `1` to guarantee a path is available from the station entrance to the stop or `0` if it MAY be accessible.  Completely avoid `2` as that is guaranteed to be INACCESSIBLE.
-     *
+     * 
      * @param options Options
      */
     async getFacilities(options?: getFacilitiesOptions): Promise<Facilities> {
         return await this.request('/facilities', { query: options });
     }
+    streamFacilities(options?: getFacilitiesOptions): EventSource {
+        return this.stream(`/facilities`, { query: options })
+    }
     /**
      * Show a particular alert by the alert's id
-     *
+     * 
      * An effect (enumerated in `/data/attributes/effect` and human-readable in `/data/attributes/service_effect`) on a provided service (facility, route, route type, stop and/or trip in `//data/attributes/informed_entity`) described by a banner (`/data/attributes/banner`), short header (`/data/attributes/short_header`), header `/data/attributes/header`, description (`/data/attributes/description`), image (`/data/attributes/image`), and image alternative text (`/data/attributes/image_alternative_text`) that is active for one or more periods(`/data/attributes/active_period`) caused by a cause (`/data/attribute/cause`) that somewhere in its lifecycle (enumerated in `/data/attributes/lifecycle` and human-readable in `/data/attributes/timeframe`).
-     *
+     * 
      * See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-alert)
-     *
+     * 
      * ## Descriptions
-     *
+     * 
      * There are 7 descriptive attributes.
-     *
+     * 
      * | JSON pointer                                | Usage                                                                           |
      * |---------------------------------------------|---------------------------------------------------------------------------------|
      * | `/data/attributes/banner`       | Display as alert across application/website                                     |
@@ -4435,24 +4459,24 @@ class Client {
      * | `/data/attributes/description`  | Used when user asks to expand alert.                                            |
      * | `/data/attributes/image`        | URL to descriptive image.                                                       |
      * | `/data/attributes/image_alternative_text`  | Text that describes image linked in url                              |
-     *
+     * 
      * ## Effect
-     *
+     * 
      * | JSON pointer                                  |                |
      * |-----------------------------------------------|----------------|
      * | `/data/attributes/effect`         | Enumerated     |
      * | `/data/attributes/service_effect` | Human-readable |
-     *
+     * 
      * ## Timeline
-     *
+     * 
      * There are 3 timeline related attributes
-     *
+     * 
      * | JSON pointer                                 | Description                                                                              |
      * |----------------------------------------------|------------------------------------------------------------------------------------------|
      * | `/data/attributes/active_period` | Exact Date/Time ranges alert is active                                                   |
      * | `/data/attributes/lifecycle`     | Enumerated, machine-readable description of `/data/attributes/active_period` |
      * | `/data/attributes/timeframe`     | Human-readable description of `/data/attributes/active_period`               |
-     *
+     * 
      * @param id Unique identifier for alert
      * @param options Options
      */
@@ -4461,15 +4485,15 @@ class Client {
     }
     /**
      * List active and upcoming system alerts
-     *
+     * 
      * An effect (enumerated in `/data/{index}/attributes/effect` and human-readable in `/data/{index}/attributes/service_effect`) on a provided service (facility, route, route type, stop and/or trip in `//data/{index}/attributes/informed_entity`) described by a banner (`/data/{index}/attributes/banner`), short header (`/data/{index}/attributes/short_header`), header `/data/{index}/attributes/header`, description (`/data/{index}/attributes/description`), image (`/data/{index}/attributes/image`), and image alternative text (`/data/{index}/attributes/image_alternative_text`) that is active for one or more periods(`/data/{index}/attributes/active_period`) caused by a cause (`/data/{index}/attribute/cause`) that somewhere in its lifecycle (enumerated in `/data/{index}/attributes/lifecycle` and human-readable in `/data/{index}/attributes/timeframe`).
-     *
+     * 
      * See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-alert)
-     *
+     * 
      * ## Descriptions
-     *
+     * 
      * There are 7 descriptive attributes.
-     *
+     * 
      * | JSON pointer                                | Usage                                                                           |
      * |---------------------------------------------|---------------------------------------------------------------------------------|
      * | `/data/{index}/attributes/banner`       | Display as alert across application/website                                     |
@@ -4478,42 +4502,47 @@ class Client {
      * | `/data/{index}/attributes/description`  | Used when user asks to expand alert.                                            |
      * | `/data/{index}/attributes/image`        | URL to descriptive image.                                                       |
      * | `/data/{index}/attributes/image_alternative_text`  | Text that describes image linked in url                              |
-     *
+     * 
      * ## Effect
-     *
+     * 
      * | JSON pointer                                  |                |
      * |-----------------------------------------------|----------------|
      * | `/data/{index}/attributes/effect`         | Enumerated     |
      * | `/data/{index}/attributes/service_effect` | Human-readable |
-     *
+     * 
      * ## Timeline
-     *
+     * 
      * There are 3 timeline related attributes
-     *
+     * 
      * | JSON pointer                                 | Description                                                                              |
      * |----------------------------------------------|------------------------------------------------------------------------------------------|
      * | `/data/{index}/attributes/active_period` | Exact Date/Time ranges alert is active                                                   |
      * | `/data/{index}/attributes/lifecycle`     | Enumerated, machine-readable description of `/data/{index}/attributes/active_period` |
      * | `/data/{index}/attributes/timeframe`     | Human-readable description of `/data/{index}/attributes/active_period`               |
-     *
-     *
+     * 
+     * 
      * ## Activities
-     *
+     * 
      * Alerts are by default filtered to those where `/data/{index}/attributes/informed_entity/{informed_entity_index}/activities/{activity_index}` in one of BOARDEXITRIDE, as these cover most riders.  If you want all alerts without filtering by activity, you should use the special value `"ALL"`: `filter[activity]=ALL`.
-     *
+     * 
      * ### Accessibility
-     *
+     * 
      * The default activities cover if boarding, exiting, or riding is generally affected for all riders by the alert. If ONLY wheelchair using riders are affected, such as if a ramp, lift, or safety system for wheelchairs is affected, only the `"USING_WHEELCHAIR"` activity will be set. To cover wheelchair using rider, filter on the defaults and `"USING_WHEELCHAIR"`: `filter[activity]=USING_WHEELCHAIR,BOARD,EXIT,RIDE`.
-     *
+     * 
      * Similarly for riders with limited mobility that need escalators, `"USING_ESCALATOR"` should be added to the defaults: `filter[activity]=USING_ESCALATOR,BOARD,EXIT,RIDE`.
-     *
+     * 
      * @param options Options
      */
     async getAlerts(options?: getAlertsOptions): Promise<Alerts> {
         return await this.request('/alerts', { query: options });
     }
+    streamAlerts(options?: getAlertsOptions): EventSource {
+        return this.stream(`/alerts`, { query: options })
+    }
 }
 export {
+    Document,
+    Resource,
     ScheduleResource,
     TripResource,
     Facility,
