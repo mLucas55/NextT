@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { EventSource } from "eventsource";
 import { WebSocket } from "ws";
-import { Client, Resource, ResourceIdentifier, RouteResource, ShapeResource, TripResource } from "./api/mbta";
+import { Client, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, VehicleResource } from "./api/mbta";
 
 /**
  * IDs of routes which should be tracked.
@@ -27,13 +27,29 @@ interface Route extends Identifier {
     color?: string;
     shapes: Shape[];
 }
-interface ResourceMap {
-    route: RouteResource;
+interface Vehicle extends Identifier {
+    updatedAt?: string;
+    speed?: number;
+    revenueStatus?: string;
+    occupancyStatus?: string;
+    longitude: number;
+    latitude: number;
+    label?: string;
+    directionId?: number;
+    currentStopSequence?: number;
+    currentStatus?: string;
+    carriages?: {
+        occupancyStatus?: string;
+        occupancyPercentage?: number;
+        label?: string;
+    }[];
+    bearing?: number;
 }
 interface TypeMap {
     route: Route;
+    vehicle: Vehicle;
 }
-type ResourceType = keyof TypeMap;
+type APIType = keyof TypeMap;
 interface StreamEventMap<T extends Identifier = Identifier> {
     reset: T[];
     add: T;
@@ -41,96 +57,182 @@ interface StreamEventMap<T extends Identifier = Identifier> {
     remove: Identifier;
 }
 type EventType = keyof StreamEventMap;
-type PayloadMap<T extends ResourceType = ResourceType> = {
+type PayloadMap<T extends APIType = APIType> = {
     [P in EventType]: {
         type: T;
         data: StreamEventMap<TypeMap[T]>[P];
     };
 };
-type EventMap<T extends ResourceType = ResourceType> = {
-    [P in keyof PayloadMap]: [PayloadMap<T>[P]];
+type EventMap<T extends APIType = APIType> = {
+    [P in EventType]: [PayloadMap<T>[P]];
 };
 
-function mapRoutes(data: Resource | Resource[]) {
-    if (!Array.isArray(data)) {
-        data = [data];
-    }
-    const routes = [];
-    for (const resource of data) {
-        if (resource.type === 'route' && resource.attributes?.type !== undefined) {
-            // get included shapes assocated with the route
-            const trips = data?.filter(value => value.type === 'trip' && (value.relationships?.route?.data as ResourceIdentifier | undefined)?.id === resource.id) || [];
-            const shapes: Shape[] = [];
-            for (const resource of data) {
-                if (resource.type === 'shape' && trips?.some(trip => resource.id && (trip.relationships?.shape?.data as ResourceIdentifier | undefined)?.id === resource.id)) {
-                    shapes.push({ id: resource.id, ...resource.attributes } as Shape);
-                }
-            }
-            routes.push({ id: resource.id, ...resource.attributes, shapes } as Route);
-        }
-    }
-    return routes;
-}
-
-function map<T extends ResourceType>(type: T, data: Resource | Resource[]): TypeMap[T][] {
-    switch (type) {
-        case 'route':
-            return mapRoutes(data);
-    }
-}
+type ResourceCache = {
+    [key: string]: Map<string, Resource>
+} & {
+    [P in ResourceType]: Map<string, ResourceMap[P]>;
+};
 
 class TrackerCache extends EventEmitter<EventMap> {
-    readonly routes: Map<string, Route>;
+    #cache: Partial<ResourceCache>;
+    /**
+     * Map of resource types to the getters for the type that should be tracked.
+     */
+    #getters: { [P in ResourceType]?: readonly [(id: string) => Identifier | undefined, () => Identifier[]] };
+    get routes() {
+        return this.#getRoutes();
+    }
+    get vehicles() {
+        return this.#getVehicles();
+    }
 
     constructor() {
         super();
         this.setMaxListeners(Infinity);
-        this.routes = new Map();
+        this.#cache = {};
+        const routeGetters = [this.#getRoute.bind(this), this.#getRoutes.bind(this)] as const;
+        const vehicleGetters = [this.#getVehicle.bind(this), this.#getVehicles.bind(this)] as const;
+        this.#getters = {
+            route: routeGetters,
+            shape: routeGetters,
+            vehicle: vehicleGetters
+        };
     }
 
-    #for<T extends ResourceType>(type: T): Map<string, TypeMap[T]> {
-        switch (type) {
-            case 'route':
-                return this.routes;
+    #mapRoute(resource: RouteResource) {
+        if (resource.attributes?.type !== undefined) {
+            // get included shapes assocated with the route
+            const trips = Array.from(this.#cache.trip?.values() || []).filter(value => value.relationships?.route?.data?.id === resource.id);
+            const shapes: Shape[] = [];
+            for (const resource of this.#cache.shape?.values() || []) {
+                if (trips?.some(trip => trip.relationships?.shape?.data?.id === resource.id)) {
+                    shapes.push({ id: resource.id, ...resource.attributes } as Shape);
+                }
+            }
+            return { id: resource.id, ...resource.attributes, shapes } as Route;
         }
     }
 
-    reset<T extends ResourceType>(type: T, resources: ResourceMap[T][]) {
-        const data = map(type, resources);
-        const cache = this.#for(type);
-        cache.clear();
-        for (const resource of data) {
+    #getRoute(id: string) {
+        const resource = this.#cache.route?.get(id);
+        if (resource) {
+            return this.#mapRoute(resource);
+        }
+    }
+
+    #getRoutes() {
+        const routes: Route[] = [];
+        for (const resource of this.#cache.route?.values() || []) {
+            const route = this.#mapRoute(resource);
+            if (route) {
+                routes.push(route);
+            }
+        }
+        return routes;
+    }
+
+    #mapVehicle(resource: VehicleResource) {
+        return { id: resource.id, ...resource.attributes } as Vehicle;
+    }
+
+    #getVehicle(id: string) {
+        const resource = this.#cache.vehicle?.get(id);
+        if (resource) {
+            return this.#mapVehicle(resource);
+        }
+    }
+
+    #getVehicles() {
+        const vehicles: Vehicle[] = [];
+        for (const resource of this.#cache.vehicle?.values() || []) {
+            const vehicle = this.#mapVehicle(resource);
+            if (vehicle) {
+                vehicles.push(vehicle);
+            }
+        }
+        return vehicles;
+    }
+
+    #get<T extends ResourceType>(type: T): T extends keyof TypeMap ? TypeMap[T][] : undefined;
+    #get<T extends ResourceType>(type: T, id: string): T extends keyof TypeMap ? TypeMap[T] : undefined;
+    #get(type: ResourceType, id?: string) {
+        const getter = this.#getters[type];
+        if (getter) {
+            if (id) {
+                return getter[0](id);
+            } else {
+                return getter[1]();
+            }
+        }
+    }
+
+    #isTracked<T extends ResourceType>(type: T) {
+        return type in this.#getters;
+    }
+
+    #for<T extends string>(type: T) {
+        if (!this.#cache[type]) {
+            this.#cache[type] = new Map();
+        }
+        return this.#cache[type] as ResourceCache[T];
+    }
+
+    reset(resources: Resource[]) {
+        const cleared = new Set<ResourceType>();
+        for (const resource of resources) {
+            const { type } = resource;
+            const cache = this.#for(type);
+            if (!cleared.has(type)) {
+                cache.clear();
+                cleared.add(type);
+            }
             cache.set(resource.id, resource);
         }
-        this.emit('reset', { type, data });
+        // send reset events if applicable
+        for (const type of cleared) {
+            const data = this.#get(type);
+            if (data) {
+                this.emit('reset', { type: type as APIType, data });
+            }
+        }
     }
 
-    add<T extends ResourceType>(type: T, resource: ResourceMap[T]) {
-        const [data] = map(type, resource);
+    add(resource: Resource) {
+        const { type } = resource;
         const cache = this.#for(type);
-        cache.set(data.id, data);
-        this.emit('add', { type, data });
+        cache.set(resource.id, resource);
+        // send add event if applicable
+        const data = this.#get(type, resource.id);
+        if (data) {
+            this.emit('add', { type: type as APIType, data });
+        }
     }
 
-    update<T extends ResourceType>(type: T, resource: ResourceMap[T]) {
-        const [data] = map(type, resource);
+    update(resource: Resource) {
+        const { type } = resource;
         const cache = this.#for(type);
-        cache.set(data.id, data);
-        this.emit('update', { type, data });
+        cache.set(resource.id, resource);
+        // send update event if applicable
+        const data = this.#get(type, resource.id);
+        if (data) {
+            this.emit('update', { type: type as APIType, data });
+        }
     }
 
-    remove<T extends ResourceType>(type: T, identifier: ResourceIdentifier) {
-        const { id } = identifier;
+    remove({ id, type }: ResourceIdentifier) {
         const cache = this.#for(type);
         cache.delete(id);
-        this.emit('remove', { type, data: { id } });
+        // send remove event if applicable
+        if (this.#isTracked(type)) {
+            this.emit('remove', { type: type as APIType, data: { id } });
+        }
     }
 
-    bind(type: ResourceType, es: EventSource) {
-        es.addEventListener('reset', (event) => this.reset(type, JSON.parse(event.data)));
-        es.addEventListener('add', (event) => this.add(type, JSON.parse(event.data)));
-        es.addEventListener('update', (event) => this.update(type, JSON.parse(event.data)));
-        es.addEventListener('remove', (event) => this.remove(type, JSON.parse(event.data)));
+    bind(es: EventSource) {
+        es.addEventListener('reset', (event) => this.reset(JSON.parse(event.data)));
+        es.addEventListener('add', (event) => this.add(JSON.parse(event.data)));
+        es.addEventListener('update', (event) => this.update(JSON.parse(event.data)));
+        es.addEventListener('remove', (event) => this.remove(JSON.parse(event.data)));
     }
 }
 
@@ -162,7 +264,8 @@ class Tracker {
         const updateListener = listener.bind(this, 'update');
         const removeListener = listener.bind(this, 'remove');
         // sent initial reset events to sync data
-        resetListener({ type: 'route', data: Array.from(this.#cache.routes.values()) });
+        resetListener({ type: 'route', data: this.#cache.routes });
+        resetListener({ type: 'vehicle', data: this.#cache.vehicles });
         ws.once("close", () => {
             this.#cache.removeListener('reset', resetListener);
             this.#cache.removeListener('add', addListener);
@@ -188,8 +291,11 @@ class Tracker {
          * Maybe also the following data at significantly less frequent intervals:
          * - Routes, Shapes, Stops, Alerts
          */
-        const routes = this.client.streamRoutes({ 'filter[id]': ROUTES_IDS.join(','), include: 'route_patterns.representative_trip.shape' });
-        this.#cache.bind('route', routes);
+        const routeFilter = ROUTES_IDS.join(',')
+        const routes = this.client.streamRoutes({ 'filter[id]': routeFilter, include: 'route_patterns.representative_trip.shape' });
+        this.#cache.bind(routes);
+        const vehicles = this.client.streamVehicles({ 'filter[route]': routeFilter });
+        this.#cache.bind(vehicles);
     }
 }
 
