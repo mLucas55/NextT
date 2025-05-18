@@ -1,19 +1,20 @@
 import { EventEmitter } from "events";
-import { WebSocket } from "ws";
-import { Client, Resource, RouteResource, Routes, ShapeResource, TripResource } from "./api/mbta";
 import { EventSource } from "eventsource";
+import { WebSocket } from "ws";
+import { Client, Resource, ResourceIdentifier, RouteResource, ShapeResource, TripResource } from "./api/mbta";
 
 /**
  * IDs of routes which should be tracked.
  */
 const ROUTES_IDS = ['Red', 'Orange', 'Green-B', 'Green-C', 'Green-D', 'Green-E', 'Blue'];
 
-interface Shape {
+interface Identifier {
     id: string;
+}
+interface Shape extends Identifier {
     polyline: string;
 }
-interface Route {
-    id: string;
+interface Route extends Identifier {
     type: number;
     textColor?: string;
     sortOrder?: number;
@@ -26,40 +27,29 @@ interface Route {
     color?: string;
     shapes: Shape[];
 }
-interface Vehicle {
-    updatedAt?: string;
-    speed?: number;
-    revenueStatus?: string;
-    occupancyStatus?: string;
-    longitude?: number;
-    latitude?: number;
-    label?: string;
-    directionId?: number;
-    currentStopSequence?: number;
-    currentStatus?: string;
-    carriages?: {
-        occupancyStatus?: string;
-        occupancyPercentage?: number;
-        label?: string;
-    }[];
-    bearing?: number;
+interface ResourceMap {
+    route: RouteResource;
 }
-
-interface StreamEventMap<T = any> {
-    reset: T[];
-    add: T;
-    update: T;
-    remove: T;
-}
-type EventMap<T extends keyof TypeMap = keyof TypeMap> = {
-    [P in keyof StreamEventMap<TypeMap[T]>]: [{
-        type: T,
-        data: StreamEventMap<TypeMap[T]>[P]
-    }];
-};
 interface TypeMap {
     route: Route;
 }
+type ResourceType = keyof TypeMap;
+interface StreamEventMap<T extends Identifier = Identifier> {
+    reset: T[];
+    add: T;
+    update: T;
+    remove: Identifier;
+}
+type EventType = keyof StreamEventMap;
+type PayloadMap<T extends ResourceType = ResourceType> = {
+    [P in EventType]: {
+        type: T;
+        data: StreamEventMap<TypeMap[T]>[P];
+    };
+};
+type EventMap<T extends ResourceType = ResourceType> = {
+    [P in keyof PayloadMap]: [PayloadMap<T>[P]];
+};
 
 function mapRoutes(data: Resource | Resource[]) {
     if (!Array.isArray(data)) {
@@ -67,12 +57,12 @@ function mapRoutes(data: Resource | Resource[]) {
     }
     const routes = [];
     for (const resource of data) {
-        if (resource.type === 'route' && resource.id && resource.attributes?.type !== undefined) {
+        if (resource.type === 'route' && resource.attributes?.type !== undefined) {
             // get included shapes assocated with the route
-            const trips = data?.filter(value => value.type === 'trip' && (value.relationships?.route?.data as TripResource)?.id === resource.id) || [];
+            const trips = data?.filter(value => value.type === 'trip' && (value.relationships?.route?.data as ResourceIdentifier | undefined)?.id === resource.id) || [];
             const shapes: Shape[] = [];
             for (const resource of data) {
-                if (resource.type === 'shape' && trips?.some(trip => resource.id && (trip.relationships?.shape.data as ShapeResource)?.id === resource.id)) {
+                if (resource.type === 'shape' && trips?.some(trip => resource.id && (trip.relationships?.shape?.data as ResourceIdentifier | undefined)?.id === resource.id)) {
                     shapes.push({ id: resource.id, ...resource.attributes } as Shape);
                 }
             }
@@ -82,14 +72,12 @@ function mapRoutes(data: Resource | Resource[]) {
     return routes;
 }
 
-function map<T extends keyof TypeMap>(type: T, data: Resource | Resource[]): TypeMap[T][] {
+function map<T extends ResourceType>(type: T, data: Resource | Resource[]): TypeMap[T][] {
     switch (type) {
         case 'route':
             return mapRoutes(data);
     }
 }
-// A tracker collects data from the API in a stream and stores it to the cache according to the event.
-// The websockets should listen for when a stream gets a message and have the message forwarded to it.
 
 class TrackerCache extends EventEmitter<EventMap> {
     readonly routes: Map<string, Route>;
@@ -100,52 +88,49 @@ class TrackerCache extends EventEmitter<EventMap> {
         this.routes = new Map();
     }
 
-    #for<T extends keyof TypeMap>(type: T): Map<string, TypeMap[T]> {
+    #for<T extends ResourceType>(type: T): Map<string, TypeMap[T]> {
         switch (type) {
             case 'route':
                 return this.routes;
         }
     }
 
-    reset<T extends keyof TypeMap>(type: T, data: TypeMap[T][]) {
+    reset<T extends ResourceType>(type: T, resources: ResourceMap[T][]) {
+        const data = map(type, resources);
         const cache = this.#for(type);
         cache.clear();
         for (const resource of data) {
             cache.set(resource.id, resource);
         }
+        this.emit('reset', { type, data });
     }
 
-    add<T extends keyof TypeMap>(type: T, data: TypeMap[T]) {
+    add<T extends ResourceType>(type: T, resource: ResourceMap[T]) {
+        const [data] = map(type, resource);
         const cache = this.#for(type);
         cache.set(data.id, data);
+        this.emit('add', { type, data });
     }
 
-    update<T extends keyof TypeMap>(type: T, data: TypeMap[T]) {
+    update<T extends ResourceType>(type: T, resource: ResourceMap[T]) {
+        const [data] = map(type, resource);
         const cache = this.#for(type);
         cache.set(data.id, data);
+        this.emit('update', { type, data });
     }
 
-    remove<T extends keyof TypeMap>(type: T, data: Pick<TypeMap[T], 'id' | 'type'>) {
+    remove<T extends ResourceType>(type: T, identifier: ResourceIdentifier) {
+        const { id } = identifier;
         const cache = this.#for(type);
-        cache.delete(data.id);
+        cache.delete(id);
+        this.emit('remove', { type, data: { id } });
     }
 
-    put(trackerType: keyof TypeMap, eventType: keyof StreamEventMap, data: Resource[]) {
-        const mapped = map(trackerType, data);
-        switch (eventType) {
-            case 'reset':
-                this.reset(trackerType, mapped);
-                break;
-            case 'add':
-                this.add(trackerType, mapped[0]);
-                break;
-            case 'update':
-                this.update(trackerType, mapped[0]);
-                break;
-            case 'remove':
-                this.remove(trackerType, mapped[0]);
-                break;
-        }
+    bind(type: ResourceType, es: EventSource) {
+        es.addEventListener('reset', (event) => this.reset(type, JSON.parse(event.data)));
+        es.addEventListener('add', (event) => this.add(type, JSON.parse(event.data)));
+        es.addEventListener('update', (event) => this.update(type, JSON.parse(event.data)));
+        es.addEventListener('remove', (event) => this.remove(type, JSON.parse(event.data)));
     }
 }
 
@@ -165,7 +150,7 @@ class Tracker {
     }
 
     attach(ws: WebSocket) {
-        const listener = <T extends keyof EventMap>(event: T, { type, data }: EventMap[T][0]) => {
+        const listener = <T extends EventType>(event: T, { type, data }: PayloadMap[T]) => {
             const payload = {
                 type: `${type.toUpperCase()}_${event.toUpperCase()}`,
                 data: data
@@ -190,26 +175,6 @@ class Tracker {
         this.#cache.on('remove', removeListener);
     }
 
-    // async #updateRoutes() {
-    //     const { data, included } = await this.client.getRoutes({ 'filter[id]': ROUTES_IDS.join(','), include: 'route_patterns.representative_trip.shape' });
-    //     console.log(included);
-    //     this.#cache.routes = [];
-    //     for (const route of data) {
-    //         if (route.id && route.attributes?.type !== undefined) {
-    //             // get included shapes assocated with the route
-    //             const trips = included?.filter(value => value.type === 'trip' && value.relationships?.route?.data?.id === route.id) || [];
-    //             const shapes: Shape[] = [];
-    //             for (const resource of included || []) {
-    //                 if (resource.type === 'shape' && trips?.some(trip => resource.id && trip.relationships?.shape.data?.id === resource.id)) {
-    //                     shapes.push({ id: resource.id, ...resource.attributes } as Shape);
-    //                 }
-    //             }
-    //             this.#cache.routes.push({ id: route.id, ...route.attributes, shapes } as Route);
-    //         }
-    //     }
-    //     this.emit('updateRoutes', this.#cache.routes);
-    // }
-
     /**
      * Initializes tracking.
      */
@@ -223,14 +188,8 @@ class Tracker {
          * Maybe also the following data at significantly less frequent intervals:
          * - Routes, Shapes, Stops, Alerts
          */
-        const routeListener = (event: MessageEvent) => this.#cache.put('route', event.type as keyof StreamEventMap, JSON.parse(event.data));
-        const routeStream = this.client.streamRoutes({ 'filter[id]': ROUTES_IDS.join(','), include: 'route_patterns.representative_trip.shape' });
-        routeStream.addEventListener('reset', routeListener);
-        routeStream.addEventListener('add', routeListener);
-        routeStream.addEventListener('update', routeListener);
-        routeStream.addEventListener('create', routeListener);
-        // const routeStream = this.client.streamRoutes({ 'fields[route]': ROUTES_IDS.join(','), include: 'route_patterns.representative_trip.shape' });
-        // routeStream.addEventListener('message', (event) => this.#cache.put('route', event.type as keyof StreamEventMap, event.data));
+        const routes = this.client.streamRoutes({ 'filter[id]': ROUTES_IDS.join(','), include: 'route_patterns.representative_trip.shape' });
+        this.#cache.bind('route', routes);
     }
 }
 
@@ -241,3 +200,4 @@ export {
     Tracker,
     tracker
 };
+
