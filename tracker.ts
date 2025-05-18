@@ -94,7 +94,6 @@ class TrackerCache extends EventEmitter<EventMap> {
         const vehicleGetters = [this.#getVehicle.bind(this), this.#getVehicles.bind(this)] as const;
         this.#getters = {
             route: routeGetters,
-            shape: routeGetters,
             vehicle: vehicleGetters
         };
     }
