@@ -1,25 +1,68 @@
 import { EventSource } from "eventsource";
-interface Document {
-    links?: Record<string, string>;
+interface IDocument {
+    jsonapi?: Record<string, any>;
+    links?: Links;
     /**
      * Included resources
      */
     included?: Resource[];
-    data?: Resource | Resource[];
+    meta?: Meta;
 }
-interface Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: string;
-    relationships?: Record<string, Document>
-    links?: Record<string, string>;
+interface DataDocument extends IDocument {
+    data: Resource | Resource[];
+}
+interface ErrorDocument extends IDocument {
+    errors: any;
+}
+interface MetaDocument extends IDocument {
+    meta: Meta;
+}
+type Document = DataDocument | ErrorDocument | MetaDocument;
+type Meta = Record<string, any>;
+interface ILink {
+    href: string;
+    rel?: string;
+    describedby?: Links;
+    title?: string;
+    type?: string;
+    hreflang?: string | string[];
+    meta?: Meta;
+
+}
+type Link = string | ILink | null;
+type Links<T extends string = string> = Record<T, Link>;
+interface IRelationship {
+    links?: Links;
+    data?: ResourceLinkage;
+    meta?: Meta;
+}
+interface LinksRelationship extends IRelationship {
+    links: Links;
+}
+interface DataRelationship extends IRelationship {
+    data: ResourceLinkage;
+}
+interface MetaRelationship extends IRelationship {
+    meta: Meta;
+}
+type Relationships = Record<string, IRelationship | LinksRelationship | DataRelationship | MetaRelationship>;
+interface ResourceIdentifier {
     /**
      * The JSON-API resource ID
      */
     id: string;
-    attributes?: Record<string, any>;
+    /**
+     * The JSON-API resource type
+     */
+    type: string;
 }
+interface Resource extends ResourceIdentifier {
+    attributes?: Record<string, any>;
+    relationships?: Relationships;
+    links?: Links;
+    meta?: Meta;
+}
+type ResourceLinkage = ResourceIdentifier | ResourceIdentifier[] | null;
 /**
  * A schedule is the arrival drop off (`*\/attributes/drop_off_type`) time (`*\/attributes/arrival_time`) and departure pick up (`*\/attributes/pickup_type`) time (`*\/attributes/departure_time`) to/from a stop (`*\/relationships/stop/data/id`) at a given sequence (`*\/attributes/stop_sequence`) along a trip (`*\/relationships/trip/data/id`) going in a direction (`*\/attributes/direction_id`) on a route (`*\/relationships/route/data/id`) when the trip is following a service (`*\/relationships/service/data/id`) to determine when it is active.
  *
@@ -367,7 +410,7 @@ interface TripResource extends Resource {
 /**
  * A JSON-API document with a single {@link FacilityResource} resource
  */
-interface Facility extends Document {
+interface Facility extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -383,7 +426,7 @@ interface Facility extends Document {
 /**
  * A JSON-API document with a single {@link StopResource} resource
  */
-interface Stop extends Document {
+interface Stop extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1567,7 +1610,7 @@ interface Stops extends Resource {
 /**
  * A JSON-API document with a single {@link TripResource} resource
  */
-interface Trip extends Document {
+interface Trip extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1611,7 +1654,7 @@ interface NotFound {
 /**
  * A JSON-API document with a single {@link LiveFacilityResource} resource
  */
-interface LiveFacility extends Document {
+interface LiveFacility extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1627,7 +1670,7 @@ interface LiveFacility extends Document {
 /**
  * A JSON-API document with a single {@link AlertResource} resource
  */
-interface Alert extends Document {
+interface Alert extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1796,7 +1839,7 @@ interface OccupancyResource extends Resource {
 /**
  * A JSON-API document with a single {@link RouteResource} resource
  */
-interface Route extends Document {
+interface Route extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -1812,7 +1855,7 @@ interface Route extends Document {
 /**
  * A JSON-API document with a single {@link ShapeResource} resource
  */
-interface Shape extends Document {
+interface Shape extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2213,7 +2256,7 @@ interface Routes extends Resource {
 /**
  * A JSON-API document with a single {@link ServiceResource} resource
  */
-interface Service extends Document {
+interface Service extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2229,7 +2272,7 @@ interface Service extends Document {
 /**
  * A JSON-API document with a single {@link VehicleResource} resource
  */
-interface Vehicle extends Document {
+interface Vehicle extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2356,7 +2399,7 @@ interface RoutePatternResource extends Resource {
 /**
  * A JSON-API document with a single {@link RoutePatternResource} resource
  */
-interface RoutePattern extends Document {
+interface RoutePattern extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -2491,7 +2534,7 @@ interface LineResource extends Resource {
 /**
  * A JSON-API document with a single {@link LineResource} resource
  */
-interface Line extends Document {
+interface Line extends DataDocument {
     links?: {
         /**
          * the link that generated the current response document.
@@ -3899,7 +3942,7 @@ class Client {
                 url.searchParams.append(key, options.query[key]);
             }
         }
-        const headers = { ...options?.headers};
+        const headers = { ...options?.headers };
         if (this.key !== null) {
             headers['x-api-key'] = this.key;
         }
@@ -3907,7 +3950,7 @@ class Client {
     }
     async request(endpoint: string, options?: RequestOptions) {
         const { url, headers } = this.#getRequest(endpoint, options);
-        headers['accept'] ='application/vnd.api+json';
+        headers['accept'] = 'application/vnd.api+json';
         const response = await fetch(url, { headers });
         if (response.ok) {
             return await response.json();
@@ -4541,8 +4584,9 @@ class Client {
     }
 }
 export {
-    Document,
+    ResourceIdentifier,
     Resource,
+    Document,
     ScheduleResource,
     TripResource,
     Facility,
