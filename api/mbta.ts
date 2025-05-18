@@ -54,7 +54,7 @@ interface ResourceIdentifier {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
 }
 interface Resource extends ResourceIdentifier {
     attributes?: Record<string, any>;
@@ -63,6 +63,21 @@ interface Resource extends ResourceIdentifier {
     meta?: Meta;
 }
 type ResourceLinkage = ResourceIdentifier | ResourceIdentifier[] | null;
+interface ResourceMap {
+    alert: AlertResource;
+    facility: FacilityResource;
+    line: LineResource;
+    live_facility: LiveFacilityResource;
+    route: RouteResource;
+    route_pattern: RoutePatternResource;
+    schedule: ScheduleResource;
+    service: ServiceResource;
+    shape: ShapeResource;
+    stop: StopResource;
+    trip: TripResource;
+    vehicle: VehicleResource;
+}
+type ResourceType = keyof ResourceMap;
 /**
  * A schedule is the arrival drop off (`*\/attributes/drop_off_type`) time (`*\/attributes/arrival_time`) and departure pick up (`*\/attributes/pickup_type`) time (`*\/attributes/departure_time`) to/from a stop (`*\/relationships/stop/data/id`) at a given sequence (`*\/attributes/stop_sequence`) along a trip (`*\/relationships/trip/data/id`) going in a direction (`*\/attributes/direction_id`) on a route (`*\/relationships/route/data/id`) when the trip is following a service (`*\/relationships/service/data/id`) to determine when it is active.
  *
@@ -72,7 +87,7 @@ interface ScheduleResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         trip?: {
             links?: {
@@ -89,7 +104,7 @@ interface ScheduleResource extends Resource {
                 /**
                  * Type of related trip resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related trip resource id
                  */
@@ -111,7 +126,7 @@ interface ScheduleResource extends Resource {
                 /**
                  * Type of related stop resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related stop resource id
                  */
@@ -133,7 +148,7 @@ interface ScheduleResource extends Resource {
                 /**
                  * Type of related route resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route resource id
                  */
@@ -155,7 +170,7 @@ interface ScheduleResource extends Resource {
                 /**
                  * Type of related prediction resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related prediction resource id
                  */
@@ -237,7 +252,7 @@ interface TripResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         shape?: {
             links?: {
@@ -254,7 +269,7 @@ interface TripResource extends Resource {
                 /**
                  * Type of related shape resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related shape resource id
                  */
@@ -276,7 +291,7 @@ interface TripResource extends Resource {
                 /**
                  * Type of related service resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related service resource id
                  */
@@ -298,7 +313,7 @@ interface TripResource extends Resource {
                 /**
                  * Type of related route_pattern resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route_pattern resource id
                  */
@@ -320,7 +335,7 @@ interface TripResource extends Resource {
                 /**
                  * Type of related route resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route resource id
                  */
@@ -342,7 +357,7 @@ interface TripResource extends Resource {
                 /**
                  * Type of related occupancy resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related occupancy resource id
                  */
@@ -481,7 +496,7 @@ interface ShapeResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {};
     links?: {};
     /**
@@ -507,7 +522,7 @@ interface RouteResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         routePatterns?: {
             links?: {
@@ -524,7 +539,7 @@ interface RouteResource extends Resource {
                 /**
                  * Type of related route_patterns resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route_patterns resource id
                  */
@@ -546,7 +561,7 @@ interface RouteResource extends Resource {
                 /**
                  * Type of related line resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related line resource id
                  */
@@ -568,7 +583,7 @@ interface RouteResource extends Resource {
                 /**
                  * Type of related agency resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related agency resource id
                  */
@@ -710,7 +725,7 @@ interface FacilityResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         stop?: {
             links?: {
@@ -727,7 +742,7 @@ interface FacilityResource extends Resource {
                 /**
                  * Type of related stop resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related stop resource id
                  */
@@ -807,7 +822,7 @@ interface AlertResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         facility?: {
             links?: {
@@ -824,7 +839,7 @@ interface AlertResource extends Resource {
                 /**
                  * Type of related facility resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related facility resource id
                  */
@@ -1147,7 +1162,7 @@ interface PredictionResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         vehicle?: {
             links?: {
@@ -1164,7 +1179,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related vehicle resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related vehicle resource id
                  */
@@ -1186,7 +1201,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related trip resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related trip resource id
                  */
@@ -1208,7 +1223,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related stop resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related stop resource id
                  */
@@ -1230,7 +1245,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related schedule resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related schedule resource id
                  */
@@ -1252,7 +1267,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related route resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route resource id
                  */
@@ -1274,7 +1289,7 @@ interface PredictionResource extends Resource {
                 /**
                  * Type of related alerts resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related alerts resource id
                  */
@@ -1401,7 +1416,7 @@ interface StopResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         parentStation?: {
             links?: {
@@ -1418,7 +1433,7 @@ interface StopResource extends Resource {
                 /**
                  * Type of related parent_station resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related parent_station resource id
                  */
@@ -1554,7 +1569,7 @@ interface LiveFacilityResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {};
     links?: {};
     /**
@@ -1808,7 +1823,7 @@ interface OccupancyResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {};
     links?: {};
     /**
@@ -1875,7 +1890,7 @@ interface VehicleResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         trip?: {
             links?: {
@@ -1892,7 +1907,7 @@ interface VehicleResource extends Resource {
                 /**
                  * Type of related trip resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related trip resource id
                  */
@@ -1914,7 +1929,7 @@ interface VehicleResource extends Resource {
                 /**
                  * Type of related stop resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related stop resource id
                  */
@@ -1936,7 +1951,7 @@ interface VehicleResource extends Resource {
                 /**
                  * Type of related route resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route resource id
                  */
@@ -2101,7 +2116,7 @@ interface ServiceResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {};
     links?: {};
     /**
@@ -2293,7 +2308,7 @@ interface RoutePatternResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {
         route?: {
             links?: {
@@ -2310,7 +2325,7 @@ interface RoutePatternResource extends Resource {
                 /**
                  * Type of related route resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related route resource id
                  */
@@ -2332,7 +2347,7 @@ interface RoutePatternResource extends Resource {
                 /**
                  * Type of related representative_trip resource
                  */
-                type: string;
+                type: ResourceType;
                 /**
                  * Related representative_trip resource id
                  */
@@ -2501,7 +2516,7 @@ interface LineResource extends Resource {
     /**
      * The JSON-API resource type
      */
-    type: string;
+    type: ResourceType;
     relationships?: {};
     links?: {};
     /**
@@ -4584,6 +4599,8 @@ class Client {
     }
 }
 export {
+    ResourceMap,
+    ResourceType,
     ResourceIdentifier,
     Resource,
     Document,
