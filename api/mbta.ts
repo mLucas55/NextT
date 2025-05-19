@@ -46,7 +46,7 @@ interface MetaRelationship extends IRelationship {
     meta: Meta;
 }
 type Relationships = Record<string, IRelationship | LinksRelationship | DataRelationship | MetaRelationship>;
-interface ResourceIdentifier {
+interface Resource<T extends ResourceType = ResourceType> {
     /**
      * The JSON-API resource ID
      */
@@ -54,14 +54,13 @@ interface ResourceIdentifier {
     /**
      * The JSON-API resource type
      */
-    type: ResourceType;
-}
-interface Resource extends ResourceIdentifier {
+    type: T;
     attributes?: Record<string, any>;
     relationships?: Relationships;
     links?: Links;
     meta?: Meta;
 }
+type ResourceIdentifier<T extends ResourceType = ResourceType> = Pick<Resource<T>, 'id' | 'type'>;
 type ResourceLinkage = ResourceIdentifier | ResourceIdentifier[] | null;
 interface ResourceMap {
     alert: AlertResource;
