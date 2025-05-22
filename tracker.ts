@@ -10,7 +10,7 @@ const ROUTES_IDS = ['Red', 'Orange', 'Green-B', 'Green-C', 'Green-D', 'Green-E',
 type Unionable<T> = T extends {} ? T : {};
 type APIResource<T extends Resource = Resource, U extends Record<string, any> = Unionable<T['attributes']>> = Pick<T, 'id'> & U;
 type APIIdentifier<T extends APIResource = APIResource> = Pick<T, 'id'>;
-type APIRoute = APIResource<RouteResource, RouteResource['attributes'] & { type: number }>;
+type APIRoute = APIResource<RouteResource, RouteResource['attributes'] & { type: number, shapes: APIResourceMap['shape'][] }>;
 interface APICustomResourceMap {
     route: APIRoute;
 }
@@ -19,10 +19,10 @@ type APIResourceMap = {
 };
 type Association<T extends ResourceType = ResourceType> = {
     type: T;
-    get: (cache: Partial<ResourceCache>, id?: string) => APIResourceMap[T][]
+    get: (cache: Partial<ResourceCache>, id?: string) => APIResourceMap[T][];
 }
 type ResourceCache = {
-    [P in ResourceType]: Map<string, ResourceMap[P]>
+    [P in ResourceType]: Map<string, ResourceMap[P]>;
 };
 // Event Stream
 interface StreamEventMap<T extends APIResource = APIResource> {
@@ -91,7 +91,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         for (const type of cleared) {
             const payload = this.#get(type);
             if (payload) {
-                this.emit('reset', payload as { type: ResourceType, data: APIResource[] });
+                this.emit('reset', payload);
             }
         }
     }
