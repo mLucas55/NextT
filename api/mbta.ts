@@ -1,7 +1,7 @@
 import { EventSource } from "eventsource";
 interface IDocument {
     jsonapi?: Record<string, any>;
-    links?: Links;
+    links?: Partial<Links<'self' | 'related' | 'describedby' | 'first' | 'last' | 'prev' | 'next'>>;
     /**
      * Included resources
      */
@@ -12,7 +12,7 @@ interface DataDocument extends IDocument {
     data: Resource | Resource[];
 }
 interface ErrorDocument extends IDocument {
-    errors: any;
+    errors: any[];
 }
 interface MetaDocument extends IDocument {
     meta: Meta;
@@ -22,7 +22,7 @@ type Meta = Record<string, any>;
 interface ILink {
     href: string;
     rel?: string;
-    describedby?: Links;
+    describedby?: Link;
     title?: string;
     type?: string;
     hreflang?: string | string[];
@@ -67,6 +67,8 @@ interface ResourceMap {
     facility: FacilityResource;
     line: LineResource;
     live_facility: LiveFacilityResource;
+    occupancy: OccupancyResource;
+    prediction: PredictionResource;
     route: RouteResource;
     route_pattern: RoutePatternResource;
     schedule: ScheduleResource;
@@ -83,10 +85,6 @@ type ResourceType = keyof ResourceMap;
  * See [GTFS `stop_times.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt) for base specification.
  */
 interface ScheduleResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         trip?: {
             links?: {
@@ -178,10 +176,6 @@ interface ScheduleResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * | Value   | `*\/attributes/arrival_time` and `*\/attributes/departure_time` |
@@ -248,10 +242,6 @@ interface ScheduleResource extends Resource {
  * Representation of the journey of a particular vehicle through a given set of stops. See [GTFS `trips.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt)
  */
 interface TripResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         shape?: {
             links?: {
@@ -365,10 +355,6 @@ interface TripResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * Indicator of wheelchair accessibility: `0`, `1`, `2`
@@ -456,7 +442,7 @@ interface Stop extends DataDocument {
 /**
  * A page of {@link FacilityResource} results
  */
-interface Facilities extends Resource {
+interface Facilities extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -492,16 +478,8 @@ interface Facilities extends Resource {
  * Sequence of geographic points representing a path vehicles will travel on a trip. See [GTFS `shapes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#shapestxt).
  */
 interface ShapeResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {};
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * The sequence of points in [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm).
@@ -518,10 +496,6 @@ interface ShapeResource extends Resource {
  * Path a vehicle travels during service. See [GTFS `routes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
  */
 interface RouteResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         routePatterns?: {
             links?: {
@@ -591,10 +565,6 @@ interface RouteResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * | Value | Name          | Example    |
@@ -642,7 +612,7 @@ interface RouteResource extends Resource {
 /**
  * A page of {@link RoutePatternResource} results
  */
-interface RoutePatterns extends Resource {
+interface RoutePatterns extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -677,7 +647,7 @@ interface RoutePatterns extends Resource {
 /**
  * A page of {@link VehicleResource} results
  */
-interface Vehicles extends Resource {
+interface Vehicles extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -721,10 +691,6 @@ interface Vehicles extends Resource {
  * The lack of an `ELEVATOR` MAY NOT make a stop wheelchair inaccessible.  Riders should check `/stops/{id}` `/data/attributes/wheelchair_boarding` is `1` to guarantee a path is available from the station entrance to the stop or `0` if it MAY be accessible.  Completely avoid `2` as that is guaranteed to be INACCESSIBLE.
  */
 interface FacilityResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         stop?: {
             links?: {
@@ -750,10 +716,6 @@ interface FacilityResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * The type of the facility.
@@ -818,10 +780,6 @@ interface FacilityResource extends Resource {
  * | `*\/attributes/timeframe`     | Human-readable description of `*\/attributes/active_period`               |
  */
 interface AlertResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         facility?: {
             links?: {
@@ -847,10 +805,6 @@ interface AlertResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * A URL for extra details, such as outline construction or maintenance plans.
@@ -1034,7 +988,7 @@ interface AlertResource extends Resource {
 /**
  * A page of {@link LineResource} results
  */
-interface Lines extends Resource {
+interface Lines extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -1069,7 +1023,7 @@ interface Lines extends Resource {
 /**
  * A JSON-API error document when the server cannot or will not process the request due to something that is perceived to be a client error.
  */
-interface BadRequest {
+interface BadRequest extends ErrorDocument {
     errors: {
         /**
          * A short, human-readable summary of the problem
@@ -1158,10 +1112,6 @@ interface InformedEntity {
  * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate)
  */
 interface PredictionResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         vehicle?: {
             links?: {
@@ -1297,10 +1247,6 @@ interface PredictionResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * | Value            | Description |
@@ -1412,10 +1358,6 @@ interface PredictionResource extends Resource {
  * Physical location where transit can pick-up or drop-off passengers. See https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt for more details and https://github.com/mbta/gtfs-documentation/blob/master/reference/gtfs.md#stopstxt for specific extensions.
  */
 interface StopResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         parentStation?: {
             links?: {
@@ -1441,10 +1383,6 @@ interface StopResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * Whether there are any vehicles with wheelchair boarding or paths to stops that are wheelchair acessible: 0, 1, 2.
@@ -1529,7 +1467,7 @@ interface StopResource extends Resource {
 /**
  * A page of {@link ScheduleResource} results
  */
-interface Schedules extends Resource {
+interface Schedules extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -1565,16 +1503,8 @@ interface Schedules extends Resource {
  * Live data about a given facility.
  */
 interface LiveFacilityResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {};
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * Time of last update
@@ -1589,7 +1519,7 @@ interface LiveFacilityResource extends Resource {
 /**
  * A page of {@link StopResource} results
  */
-interface Stops extends Resource {
+interface Stops extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -1640,7 +1570,7 @@ interface Trip extends DataDocument {
 /**
  * A JSON-API error document when a resource is not found
  */
-interface NotFound {
+interface NotFound extends ErrorDocument {
     errors: {
         /**
          * A JSON-API error source
@@ -1700,7 +1630,7 @@ interface Alert extends DataDocument {
 /**
  * A page of {@link AlertResource} results
  */
-interface Alerts extends Resource {
+interface Alerts extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -1735,7 +1665,7 @@ interface Alerts extends Resource {
 /**
  * A page of {@link ServiceResource} results
  */
-interface Services extends Resource {
+interface Services {
     links?: {
         /**
          * Link to this page of results
@@ -1783,7 +1713,7 @@ interface FacilityProperty {
 /**
  * A page of {@link ShapeResource} results
  */
-interface Shapes extends Resource {
+interface Shapes extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -1819,16 +1749,8 @@ interface Shapes extends Resource {
  * An expected or predicted level of occupancy for a given trip.
  */
 interface OccupancyResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {};
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * The degree of passenger occupancy for the vehicle. See [GTFS-realtime OccupancyStatus](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-vehiclestopstatus).
@@ -1886,10 +1808,6 @@ interface Shape extends DataDocument {
  * Current state of a vehicle on a trip.
  */
 interface VehicleResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         trip?: {
             links?: {
@@ -1959,10 +1877,6 @@ interface VehicleResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * Time at which vehicle information was last updated. Format is ISO8601.
@@ -2061,7 +1975,7 @@ interface VehicleResource extends Resource {
 /**
  * A JSON-API error document when the API key is invalid
  */
-interface Forbidden {
+interface Forbidden extends ErrorDocument {
     errors: {
         /**
          * The HTTP status code applicable to the problem
@@ -2076,7 +1990,7 @@ interface Forbidden {
 /**
  * A page of {@link PredictionResource} results
  */
-interface Predictions extends Resource {
+interface Predictions extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -2112,16 +2026,8 @@ interface Predictions extends Resource {
  * Service represents a set of dates on which trips run.
  */
 interface ServiceResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {};
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         validDays?: number[];
         /**
@@ -2181,7 +2087,7 @@ interface ServiceResource extends Resource {
 /**
  * A JSON-API error document when rate limited
  */
-interface TooManyRequests {
+interface TooManyRequests extends ErrorDocument {
     errors: {
         /**
          * Human-readable summary of the problem
@@ -2200,7 +2106,7 @@ interface TooManyRequests {
 /**
  * A page of {@link TripResource} results
  */
-interface Trips extends Resource {
+interface Trips extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -2235,7 +2141,7 @@ interface Trips extends Resource {
 /**
  * A page of {@link RouteResource} results
  */
-interface Routes extends Resource {
+interface Routes extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -2304,10 +2210,6 @@ interface Vehicle extends DataDocument {
  * See [GTFS `route_patterns.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#route_patternstxt) for the base specification.
  */
 interface RoutePatternResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {
         route?: {
             links?: {
@@ -2355,10 +2257,6 @@ interface RoutePatternResource extends Resource {
         };
     };
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * Explains how common the route pattern is. For the MBTA, this is within the context of the entire route. Current valid values are:
@@ -2429,7 +2327,7 @@ interface RoutePattern extends DataDocument {
 /**
  * A JSON-API error document when a request uses an invalid 'accept' header
  */
-interface NotAcceptable {
+interface NotAcceptable extends ErrorDocument {
     errors: {
         /**
          * Human-readable summary of the problem
@@ -2448,7 +2346,7 @@ interface NotAcceptable {
 /**
  * A page of {@link LiveFacilityResource} results
  */
-interface LiveFacilities extends Resource {
+interface LiveFacilities extends DataDocument {
     links?: {
         /**
          * Link to this page of results
@@ -2507,21 +2405,46 @@ interface ActivePeriod {
  * | `"USING_ESCALATOR"`  | Using an escalator while boarding or exiting (should only be used for customers who specifically want to avoid stairs.)                                                                                                                                                           |
  * | `"USING_WHEELCHAIR"` | Using a wheelchair while boarding or exiting. Note that this applies to something that specifically affects customers who use a wheelchair to board or exit; a delay should not include this as an affected activity unless it specifically affects customers using wheelchairs.  |
  */
-type Activity = string;
+enum Activity {
+    /**
+     * Boarding a vehicle. Any passenger trip includes boarding a vehicle and exiting from a vehicle.
+     */
+    BOARD = 'BOARD',
+    /**
+     * Bringing a bicycle while boarding or exiting.
+     */
+    BRINGING_BIKE = 'BRINGING_BIKE',
+    /**
+     * Exiting from a vehicle (disembarking). Any passenger trip includes boarding a vehicle and exiting a vehicle.
+     */
+    EXIT = 'EXIT',
+    /**
+     * Parking a car at a garage or lot in a station.
+     */
+    PARK_CAR = 'PARK_CAR',
+    /**
+     * Riding through a stop without boarding or exiting. Not every passenger trip will include this -- a passenger may board at one stop and exit at the next stop.
+     */
+    RIDE = 'RIDE',
+    /**
+     * Storing a bicycle at a station.
+     */
+    STORE_BIKE = 'STORE_BIKE',
+    /**
+     * Using an escalator while boarding or exiting (should only be used for customers who specifically want to avoid stairs.)
+     */
+    USING_ESCALATOR = 'USING_ESCALATOR',
+    /**
+     * Using a wheelchair while boarding or exiting. Note that this applies to something that specifically affects customers who use a wheelchair to board or exit; a delay should not include this as an affected activity unless it specifically affects customers using wheelchairs.
+     */
+    USING_WHEELCHAIR = 'USING_WHEELCHAIR'
+}
 /**
  * Line represents a combination of routes
  */
 interface LineResource extends Resource {
-    /**
-     * The JSON-API resource type
-     */
-    type: ResourceType;
     relationships?: {};
     links?: {};
-    /**
-     * The JSON-API resource ID
-     */
-    id: string;
     attributes?: {
         /**
          * This field can be used to specify a legible color to use for text drawn against a background of line_color. The color must be provided as a six-character hexadecimal number, for example, `FFD700`.
