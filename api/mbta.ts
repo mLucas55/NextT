@@ -1,4 +1,5 @@
 import { EventSource } from "eventsource";
+type ResourceType = 'alert' | 'facility' | 'line' | 'live_facility' | 'occupancy' | 'prediction' | 'route' | 'route_pattern' | 'schedule' | 'service' | 'shape' | 'stop' | 'trip' | 'vehicle';
 interface IDocument {
     jsonapi?: Record<string, any>;
     links?: Partial<Links<'self' | 'related' | 'describedby' | 'first' | 'last' | 'prev' | 'next'>>;
@@ -31,21 +32,22 @@ interface ILink {
 }
 type Link = string | ILink | null;
 type Links<T extends string = string> = Record<T, Link>;
-interface IRelationship {
+interface IRelationship<T extends ResourceType = ResourceType> {
     links?: Links;
-    data?: ResourceLinkage;
+    data?: ResourceLinkage<T>;
     meta?: Meta;
 }
-interface LinksRelationship extends IRelationship {
+interface LinksRelationship<T extends ResourceType = ResourceType> extends IRelationship<T> {
     links: Links;
 }
-interface DataRelationship extends IRelationship {
-    data: ResourceLinkage;
+interface DataRelationship<T extends ResourceType = ResourceType> extends IRelationship<T> {
+    data: ResourceLinkage<T>;
 }
-interface MetaRelationship extends IRelationship {
+interface MetaRelationship<T extends ResourceType = ResourceType> extends IRelationship<T> {
     meta: Meta;
 }
-type Relationships = Record<string, IRelationship | LinksRelationship | DataRelationship | MetaRelationship>;
+type Relationship<T extends ResourceType = ResourceType> = IRelationship<T> | LinksRelationship<T> | DataRelationship<T> | MetaRelationship<T>;
+type Relationships = Record<string, Relationship>;
 interface Resource<T extends ResourceType = ResourceType> {
     /**
      * The JSON-API resource ID
@@ -61,8 +63,11 @@ interface Resource<T extends ResourceType = ResourceType> {
     meta?: Meta;
 }
 type ResourceIdentifier<T extends ResourceType = ResourceType> = Pick<Resource<T>, 'id' | 'type'>;
-type ResourceLinkage = ResourceIdentifier | ResourceIdentifier[] | null;
-interface ResourceMap {
+type ResourceLinkage<T extends ResourceType = ResourceType> = ResourceIdentifier<T> | ResourceIdentifier<T>[] | null;
+type IResourceMap = {
+    [T in ResourceType]: Resource<T>;
+}
+interface ResourceMap extends IResourceMap {
     alert: AlertResource;
     facility: FacilityResource;
     line: LineResource;
@@ -78,13 +83,12 @@ interface ResourceMap {
     trip: TripResource;
     vehicle: VehicleResource;
 }
-type ResourceType = keyof ResourceMap;
 /**
  * A schedule is the arrival drop off (`*\/attributes/drop_off_type`) time (`*\/attributes/arrival_time`) and departure pick up (`*\/attributes/pickup_type`) time (`*\/attributes/departure_time`) to/from a stop (`*\/relationships/stop/data/id`) at a given sequence (`*\/attributes/stop_sequence`) along a trip (`*\/relationships/trip/data/id`) going in a direction (`*\/attributes/direction_id`) on a route (`*\/relationships/route/data/id`) when the trip is following a service (`*\/relationships/service/data/id`) to determine when it is active.
  *
  * See [GTFS `stop_times.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt) for base specification.
  */
-interface ScheduleResource extends Resource {
+interface ScheduleResource extends Resource<'schedule'> {
     relationships?: {
         trip?: {
             links?: {
@@ -241,7 +245,7 @@ interface ScheduleResource extends Resource {
 /**
  * Representation of the journey of a particular vehicle through a given set of stops. See [GTFS `trips.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt)
  */
-interface TripResource extends Resource {
+interface TripResource extends Resource<'trip'> {
     relationships?: {
         shape?: {
             links?: {
@@ -477,7 +481,7 @@ interface Facilities extends DataDocument {
 /**
  * Sequence of geographic points representing a path vehicles will travel on a trip. See [GTFS `shapes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#shapestxt).
  */
-interface ShapeResource extends Resource {
+interface ShapeResource extends Resource<'shape'> {
     relationships?: {};
     links?: {};
     attributes?: {
@@ -495,7 +499,7 @@ interface ShapeResource extends Resource {
 /**
  * Path a vehicle travels during service. See [GTFS `routes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
  */
-interface RouteResource extends Resource {
+interface RouteResource extends Resource<'route'> {
     relationships?: {
         routePatterns?: {
             links?: {
@@ -690,7 +694,7 @@ interface Vehicles extends DataDocument {
  *
  * The lack of an `ELEVATOR` MAY NOT make a stop wheelchair inaccessible.  Riders should check `/stops/{id}` `/data/attributes/wheelchair_boarding` is `1` to guarantee a path is available from the station entrance to the stop or `0` if it MAY be accessible.  Completely avoid `2` as that is guaranteed to be INACCESSIBLE.
  */
-interface FacilityResource extends Resource {
+interface FacilityResource extends Resource<'facility'> {
     relationships?: {
         stop?: {
             links?: {
@@ -753,33 +757,33 @@ interface FacilityResource extends Resource {
  *
  * There are 7 descriptive attributes.
  *
- * | JSON pointer                                | Usage                                                                           |
- * |---------------------------------------------|---------------------------------------------------------------------------------|
- * | `*\/attributes/banner`       | Display as alert across application/website                                     |
- * | `*\/attributes/short_header` | When `*\/attributes/header` is too long to display               |
- * | `*\/attributes/header`       | Used before showing and prepended to `*\/attributes/description` |
- * | `*\/attributes/description`  | Used when user asks to expand alert.                                            |
- * | `*\/attributes/image`        | URL to descriptive image.                                                       |
- * | `*\/attributes/image_alternative_text`  | Text that describes image linked in url                              |
+ * | JSON pointer                                | Usage                                                            |
+ * |---------------------------------------------|------------------------------------------------------------------|
+ * | `*\/attributes/banner`                      | Display as alert across application/website                      |
+ * | `*\/attributes/short_header`                | When `*\/attributes/header` is too long to display               |
+ * | `*\/attributes/header`                      | Used before showing and prepended to `*\/attributes/description` |
+ * | `*\/attributes/description`                 | Used when user asks to expand alert.                             |
+ * | `*\/attributes/image`                       | URL to descriptive image.                                        |
+ * | `*\/attributes/image_alternative_text`      | Text that describes image linked in url                          |
  *
  * ## Effect
  *
  * | JSON pointer                                  |                |
  * |-----------------------------------------------|----------------|
- * | `*\/attributes/effect`         | Enumerated     |
- * | `*\/attributes/service_effect` | Human-readable |
+ * | `*\/attributes/effect`                        | Enumerated     |
+ * | `*\/attributes/service_effect`                | Human-readable |
  *
  * ## Timeline
  *
  * There are 3 timeline related attributes
  *
- * | JSON pointer                                 | Description                                                                              |
- * |----------------------------------------------|------------------------------------------------------------------------------------------|
- * | `*\/attributes/active_period` | Exact Date/Time ranges alert is active                                                   |
- * | `*\/attributes/lifecycle`     | Enumerated, machine-readable description of `*\/attributes/active_period` |
- * | `*\/attributes/timeframe`     | Human-readable description of `*\/attributes/active_period`               |
+ * | JSON pointer                                 | Description                                                               |
+ * |----------------------------------------------|---------------------------------------------------------------------------|
+ * | `*\/attributes/active_period`                | Exact Date/Time ranges alert is active                                    |
+ * | `*\/attributes/lifecycle`                    | Enumerated, machine-readable description of `*\/attributes/active_period` |
+ * | `*\/attributes/timeframe`                    | Human-readable description of `*\/attributes/active_period`               |
  */
-interface AlertResource extends Resource {
+interface AlertResource extends Resource<'alert'> {
     relationships?: {
         facility?: {
             links?: {
@@ -864,49 +868,49 @@ interface AlertResource extends Resource {
         /**
          * The effect of this problem on the affected entity.
          *
-         * | Value |
-         * |-------|
-         * | `"ACCESS_ISSUE"` |
+         * | Value                  |
+         * |------------------------|
+         * | `"ACCESS_ISSUE"`       |
          * | `"ADDITIONAL_SERVICE"` |
-         * | `"AMBER_ALERT"` |
-         * | `"BIKE_ISSUE"` |
-         * | `"CANCELLATION"` |
-         * | `"DELAY"` |
-         * | `"DETOUR"` |
-         * | `"DOCK_CLOSURE"` |
-         * | `"DOCK_ISSUE"` |
-         * | `"ELEVATOR_CLOSURE"` |
-         * | `"ESCALATOR_CLOSURE"` |
-         * | `"EXTRA_SERVICE"` |
-         * | `"FACILITY_ISSUE"` |
-         * | `"MODIFIED_SERVICE"` |
-         * | `"NO_SERVICE"` |
-         * | `"OTHER_EFFECT"` |
-         * | `"PARKING_CLOSURE"` |
-         * | `"PARKING_ISSUE"` |
-         * | `"POLICY_CHANGE"` |
-         * | `"SCHEDULE_CHANGE"` |
-         * | `"SERVICE_CHANGE"` |
-         * | `"SHUTTLE"` |
-         * | `"SNOW_ROUTE"` |
-         * | `"STATION_CLOSURE"` |
-         * | `"STATION_ISSUE"` |
-         * | `"STOP_CLOSURE"` |
-         * | `"STOP_MOVE"` |
-         * | `"STOP_MOVED"` |
-         * | `"SUMMARY"` |
-         * | `"SUSPENSION"` |
-         * | `"TRACK_CHANGE"` |
-         * | `"UNKNOWN_EFFECT"` |
+         * | `"AMBER_ALERT"`        |
+         * | `"BIKE_ISSUE"`         |
+         * | `"CANCELLATION"`       |
+         * | `"DELAY"`              |
+         * | `"DETOUR"`             |
+         * | `"DOCK_CLOSURE"`       |
+         * | `"DOCK_ISSUE"`         |
+         * | `"ELEVATOR_CLOSURE"`   |
+         * | `"ESCALATOR_CLOSURE"`  |
+         * | `"EXTRA_SERVICE"`      |
+         * | `"FACILITY_ISSUE"`     |
+         * | `"MODIFIED_SERVICE"`   |
+         * | `"NO_SERVICE"`         |
+         * | `"OTHER_EFFECT"`       |
+         * | `"PARKING_CLOSURE"`    |
+         * | `"PARKING_ISSUE"`      |
+         * | `"POLICY_CHANGE"`      |
+         * | `"SCHEDULE_CHANGE"`    |
+         * | `"SERVICE_CHANGE"`     |
+         * | `"SHUTTLE"`            |
+         * | `"SNOW_ROUTE"`         |
+         * | `"STATION_CLOSURE"`    |
+         * | `"STATION_ISSUE"`      |
+         * | `"STOP_CLOSURE"`       |
+         * | `"STOP_MOVE"`          |
+         * | `"STOP_MOVED"`         |
+         * | `"SUMMARY"`            |
+         * | `"SUSPENSION"`         |
+         * | `"TRACK_CHANGE"`       |
+         * | `"UNKNOWN_EFFECT"`     |
          *
          * See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert` `effect`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-alert)
          */
         effect?: string;
         /**
-         * | Value |
-         * |-------|
-         * | `"UNKNOWN"` |
-         * | `"KNOWN"` |
+         * | Value         |
+         * |---------------|
+         * | `"UNKNOWN"`   |
+         * | `"KNOWN"`     |
          * | `"ESTIMATED"` |
          * Indicates whether an alert has a KNOWN, ESTIMATED, or UNKNOWN duration. KNOWN duration_certainty alerts are expected to end at the specified end time, ESTIMATED duration_certainty alerts have an estimated end time, and UNKNOWN duration_certainty alerts do not have a known or estimated end time.
          */
@@ -922,55 +926,55 @@ interface AlertResource extends Resource {
         /**
          * What is causing the alert.
          *
-         * | Value |
-         * |-------|
-         * | `"ACCIDENT"` |
-         * | `"AMTRAK_TRAIN_TRAFFIC"` |
-         * | `"COAST_GUARD_RESTRICTION"` |
-         * | `"CONSTRUCTION"` |
-         * | `"CROSSING_ISSUE"` |
-         * | `"DEMONSTRATION"` |
-         * | `"DISABLED_BUS"` |
-         * | `"DISABLED_TRAIN"` |
-         * | `"DRAWBRIDGE_BEING_RAISED"` |
-         * | `"ELECTRICAL_WORK"` |
-         * | `"FIRE"` |
-         * | `"FIRE_DEPARTMENT_ACTIVITY"` |
-         * | `"FLOODING"` |
-         * | `"FOG"` |
+         * | Value                          |
+         * |--------------------------------|
+         * | `"ACCIDENT"`                   |
+         * | `"AMTRAK_TRAIN_TRAFFIC"`       |
+         * | `"COAST_GUARD_RESTRICTION"`    |
+         * | `"CONSTRUCTION"`               |
+         * | `"CROSSING_ISSUE"`             |
+         * | `"DEMONSTRATION"`              |
+         * | `"DISABLED_BUS"`               |
+         * | `"DISABLED_TRAIN"`             |
+         * | `"DRAWBRIDGE_BEING_RAISED"`    |
+         * | `"ELECTRICAL_WORK"`            |
+         * | `"FIRE"`                       |
+         * | `"FIRE_DEPARTMENT_ACTIVITY"`   |
+         * | `"FLOODING"`                   |
+         * | `"FOG"`                        |
          * | `"FREIGHT_TRAIN_INTERFERENCE"` |
-         * | `"HAZMAT_CONDITION"` |
-         * | `"HEAVY_RIDERSHIP"` |
-         * | `"HIGH_WINDS"` |
-         * | `"HOLIDAY"` |
-         * | `"HURRICANE"` |
-         * | `"ICE_IN_HARBOR"` |
-         * | `"MAINTENANCE"` |
-         * | `"MECHANICAL_ISSUE"` |
-         * | `"MECHANICAL_PROBLEM"` |
-         * | `"MEDICAL_EMERGENCY"` |
-         * | `"PARADE"` |
-         * | `"POLICE_ACTION"` |
-         * | `"POLICE_ACTIVITY"` |
-         * | `"POWER_PROBLEM"` |
-         * | `"RAIL_DEFECT"` |
-         * | `"SEVERE_WEATHER"` |
-         * | `"SIGNAL_ISSUE"` |
-         * | `"SIGNAL_PROBLEM"` |
-         * | `"SINGLE_TRACKING"` |
-         * | `"SLIPPERY_RAIL"` |
-         * | `"SNOW"` |
-         * | `"SPECIAL_EVENT"` |
-         * | `"SPEED_RESTRICTION"` |
-         * | `"SWITCH_ISSUE"` |
-         * | `"SWITCH_PROBLEM"` |
-         * | `"TIE_REPLACEMENT"` |
-         * | `"TRACK_PROBLEM"` |
-         * | `"TRACK_WORK"` |
-         * | `"TRAFFIC"` |
-         * | `"TRAIN_TRAFFIC"` |
-         * | `"UNRULY_PASSENGER"` |
-         * | `"WEATHER"` |
+         * | `"HAZMAT_CONDITION"`           |
+         * | `"HEAVY_RIDERSHIP"`            |
+         * | `"HIGH_WINDS"`                 |
+         * | `"HOLIDAY"`                    |
+         * | `"HURRICANE"`                  |
+         * | `"ICE_IN_HARBOR"`              |
+         * | `"MAINTENANCE"`                |
+         * | `"MECHANICAL_ISSUE"`           |
+         * | `"MECHANICAL_PROBLEM"`         |
+         * | `"MEDICAL_EMERGENCY"`          |
+         * | `"PARADE"`                     |
+         * | `"POLICE_ACTION"`              |
+         * | `"POLICE_ACTIVITY"`            |
+         * | `"POWER_PROBLEM"`              |
+         * | `"RAIL_DEFECT"`                |
+         * | `"SEVERE_WEATHER"`             |
+         * | `"SIGNAL_ISSUE"`               |
+         * | `"SIGNAL_PROBLEM"`             |
+         * | `"SINGLE_TRACKING"`            |
+         * | `"SLIPPERY_RAIL"`              |
+         * | `"SNOW"`                       |
+         * | `"SPECIAL_EVENT"`              |
+         * | `"SPEED_RESTRICTION"`          |
+         * | `"SWITCH_ISSUE"`               |
+         * | `"SWITCH_PROBLEM"`             |
+         * | `"TIE_REPLACEMENT"`            |
+         * | `"TRACK_PROBLEM"`              |
+         * | `"TRACK_WORK"`                 |
+         * | `"TRAFFIC"`                    |
+         * | `"TRAIN_TRAFFIC"`              |
+         * | `"UNRULY_PASSENGER"`           |
+         * | `"WEATHER"`                    |
          *
          * See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert` `Cause`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-cause)
          */
@@ -1111,7 +1115,7 @@ interface InformedEntity {
  * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `TripDescriptor`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-tripdescriptor)
  * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate)
  */
-interface PredictionResource extends Resource {
+interface PredictionResource extends Resource<'prediction'> {
     relationships?: {
         vehicle?: {
             links?: {
@@ -1357,7 +1361,7 @@ interface PredictionResource extends Resource {
 /**
  * Physical location where transit can pick-up or drop-off passengers. See https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt for more details and https://github.com/mbta/gtfs-documentation/blob/master/reference/gtfs.md#stopstxt for specific extensions.
  */
-interface StopResource extends Resource {
+interface StopResource extends Resource<'stop'> {
     relationships?: {
         parentStation?: {
             links?: {
@@ -1502,7 +1506,7 @@ interface Schedules extends DataDocument {
 /**
  * Live data about a given facility.
  */
-interface LiveFacilityResource extends Resource {
+interface LiveFacilityResource extends Resource<'live_facility'> {
     relationships?: {};
     links?: {};
     attributes?: {
@@ -1748,7 +1752,7 @@ interface Shapes extends DataDocument {
 /**
  * An expected or predicted level of occupancy for a given trip.
  */
-interface OccupancyResource extends Resource {
+interface OccupancyResource extends Resource<'occupancy'> {
     relationships?: {};
     links?: {};
     attributes?: {
@@ -1807,7 +1811,7 @@ interface Shape extends DataDocument {
 /**
  * Current state of a vehicle on a trip.
  */
-interface VehicleResource extends Resource {
+interface VehicleResource extends Resource<'vehicle'> {
     relationships?: {
         trip?: {
             links?: {
@@ -2025,7 +2029,7 @@ interface Predictions extends DataDocument {
 /**
  * Service represents a set of dates on which trips run.
  */
-interface ServiceResource extends Resource {
+interface ServiceResource extends Resource<'service'> {
     relationships?: {};
     links?: {};
     attributes?: {
@@ -2209,7 +2213,7 @@ interface Vehicle extends DataDocument {
  * Information about the different variations of service that may be run within a single route_id, including when and how often they are operated.
  * See [GTFS `route_patterns.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#route_patternstxt) for the base specification.
  */
-interface RoutePatternResource extends Resource {
+interface RoutePatternResource extends Resource<'route_pattern'> {
     relationships?: {
         route?: {
             links?: {
@@ -2442,7 +2446,7 @@ enum Activity {
 /**
  * Line represents a combination of routes
  */
-interface LineResource extends Resource {
+interface LineResource extends Resource<'line'> {
     relationships?: {};
     links?: {};
     attributes?: {

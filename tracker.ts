@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
-import { Client, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource } from "./api/mbta";
+import { Client, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, VehicleResource } from "./api/mbta";
 
 /**
  * IDs of routes which should be tracked.
@@ -10,9 +10,11 @@ const ROUTES_IDS = ['Red', 'Orange', 'Green-B', 'Green-C', 'Green-D', 'Green-E',
 type Unionable<T> = T extends {} ? T : {};
 type APIResource<T extends Resource = Resource, U extends Record<string, any> = Unionable<T['attributes']>> = Pick<T, 'id'> & U;
 type APIIdentifier<T extends APIResource = APIResource> = Pick<T, 'id'>;
-type APIRoute = APIResource<RouteResource, RouteResource['attributes'] & { type: number, shapes: APIResourceMap['shape'][] }>;
+type APIRoute = APIResource<RouteResource, RouteResource['attributes'] & { shapes: APIResourceMap['shape'][] }>;
+type APIVehicle = APIResource<VehicleResource, VehicleResource['attributes'] & { routeId?: string }>;
 interface APICustomResourceMap {
     route: APIRoute;
+    vehicle: APIVehicle;
 }
 type APIResourceMap = {
     [P in ResourceType]: P extends keyof APICustomResourceMap ? APICustomResourceMap[P] : APIResource<ResourceMap[P]>;
@@ -45,10 +47,10 @@ class TrackerCache extends EventEmitter<EventMap> {
     #cache: Partial<ResourceCache>;
     #associations: Partial<Record<ResourceType, Association>>;
     get routes() {
-        return (this.#get('route')?.data || []) as APIResourceMap['route'][];
+        return (this.#getPayload('route')?.data || []) as APIResourceMap['route'][];
     }
     get vehicles() {
-        return (this.#get('vehicle')?.data || []) as APIResourceMap['vehicle'][];
+        return (this.#getPayload('vehicle')?.data || []) as APIResourceMap['vehicle'][];
     }
 
     constructor() {
@@ -66,10 +68,10 @@ class TrackerCache extends EventEmitter<EventMap> {
         if (!this.#cache[type]) {
             this.#cache[type] = new Map();
         }
-        return this.#cache[type] as ResourceCache[T];
+        return this.#cache[type] as Map<string, ResourceMap[T]>;
     }
 
-    #get(type: ResourceType, id?: string): { type: ResourceType, data: APIResource[] } | undefined {
+    #getPayload(type: ResourceType, id?: string): { type: ResourceType, data: APIResource[] } | undefined {
         if (this.#isTracked(type)) {
             const association = this.#associations[type] as Association;
             return { type, data: association.get(this.#cache, id) }
@@ -89,7 +91,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         }
         // send reset events if applicable
         for (const type of cleared) {
-            const payload = this.#get(type);
+            const payload = this.#getPayload(type);
             if (payload) {
                 this.emit('reset', payload);
             }
@@ -101,7 +103,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         const cache = this.#cacheOf(type);
         cache.set(resource.id, resource);
         // send add event if applicable
-        const payload = this.#get(type, resource.id);
+        const payload = this.#getPayload(type, resource.id);
         if (payload) {
             for (const data of payload.data) {
                 this.emit('add', { type: payload.type, data });
@@ -114,7 +116,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         const cache = this.#cacheOf(type);
         cache.set(resource.id, resource);
         // send update event if applicable
-        const payload = this.#get(type, resource.id);
+        const payload = this.#getPayload(type, resource.id);
         if (payload) {
             for (const data of payload.data) {
                 this.emit('update', { type: payload.type, data });
@@ -126,7 +128,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         const cache = this.#cacheOf(type);
         cache.delete(id);
         // send remove event if applicable
-        const payload = this.#get(type, id);
+        const payload = this.#getPayload(type, id);
         if (payload) {
             for (const data of payload.data) {
                 this.emit('remove', { type: payload.type, data: { id: data.id } });
@@ -134,8 +136,42 @@ class TrackerCache extends EventEmitter<EventMap> {
         }
     }
 
-    setAssociation(type: ResourceType, association: Association) {
-        this.#associations[type] = association;
+    setAssociation<T extends ResourceType, U extends ResourceType>(sourceType: T, resultType: U, get: Association<U>['get'] = (cache, id) => {
+        const resources = id ? cache[sourceType]?.get(id) || [] : Array.from(cache[sourceType]?.values() || []);
+        return (Array.isArray(resources) ? resources : [resources]).map(resource => ({ ...resource.attributes, id: resource.id } as APIResourceMap[U]));
+    }) {
+        this.#associations[sourceType] = { type: resultType, get };
+    }
+
+    setRelationship(sourceType: ResourceType, resultType: ResourceType, through: string) {
+        if (resultType in this.#associations) {
+            const association = this.#associations[resultType] as Association;
+            const parts = through.split('.');
+            this.setAssociation(sourceType, resultType, (cache, id) => {
+                const resources: Resource | Resource[] = (id ? cache[sourceType]?.get(id) || [] : Array.from<ResourceMap[keyof ResourceMap]>(cache[sourceType]?.values() || []));
+                return (Array.isArray(resources) ? resources : [resources]).flatMap(resource => {
+                    // loop through each relationship to create the list of resources
+                    let resources = [resource];
+                    for (const part of parts) {
+                        resources = resources.flatMap(resource => {
+                            const relationships = resource.relationships;
+                            resources = [];
+                            if (relationships && part in relationships) {
+                                const { data } = relationships[part as keyof typeof relationships];
+                                if (data) {
+                                    // map each resources to it's cached resource
+                                    return (Array.isArray(data) ? data : [data]).map(({ type, id }) => cache[type]?.get(id) as Resource);
+                                }
+                            }
+                            return [];
+                        });
+                    }
+                    // return mapped resources
+                    return resources.flatMap(({ id }) => association.get(cache, id))
+                });
+            }
+            );
+        }
     }
 
     bind(es: EventSource) {
@@ -198,32 +234,28 @@ class Tracker {
          * - Schedules - For schedules times
          * - Predictions - For predicted times
          * Maybe also the following data at significantly less frequent intervals:
-         * - Routes, Shapes, Stops, Alerts
+         * - Routes, Shapes, Stops, Alerts, Lines
          */
-        this.#cache.setAssociation('route', {
-            type: 'route',
-            get: (cache, id) => {
-                const resources = id ? cache.route?.get(id) || [] : Array.from(cache.route?.values() || []);
-                return (Array.isArray(resources) ? resources : [resources]).map(resource => {
-                    // get included shapes assocated with the route
-                    const trips = Array.from(cache.trip?.values() || []).filter(value => value.relationships?.route?.data?.id === resource.id);
-                    const shapes = [];
-                    for (const resource of cache.shape?.values() || []) {
-                        if (trips?.some(trip => trip.relationships?.shape?.data?.id === resource.id)) {
-                            shapes.push({ id: resource.id, ...resource.attributes });
-                        }
+        this.#cache.setAssociation('route', 'route', (cache, id) => {
+            const resources = id ? cache.route?.get(id) || [] : Array.from(cache.route?.values() || []);
+            return (Array.isArray(resources) ? resources : [resources]).map(resource => {
+                // get included shapes assocated with the route
+                const trips = Array.from(cache.trip?.values() || []).filter(value => value.relationships?.route?.data?.id === resource.id);
+                const shapes = [];
+                for (const resource of cache.shape?.values() || []) {
+                    if (trips?.some(trip => trip.relationships?.shape?.data?.id === resource.id)) {
+                        shapes.push({ id: resource.id, ...resource.attributes });
                     }
-                    return { id: resource.id, ...resource.attributes, shapes };
-                })
-            }
+                }
+                return { ...resource.attributes, id: resource.id, shapes };
+            })
         });
-        this.#cache.setAssociation('vehicle', {
-            type: 'vehicle',
-            get: (cache, id) => {
-                const resources = id ? cache.vehicle?.get(id) || [] : Array.from(cache.vehicle?.values() || []);
-                return (Array.isArray(resources) ? resources : [resources]).map(resource => ({ id: resource.id, ...resource.attributes }));
-            }
+        this.#cache.setAssociation('vehicle', 'vehicle', (cache, id) => {
+            const resources = id ? cache.vehicle?.get(id) || [] : Array.from(cache.vehicle?.values() || []);
+            return (Array.isArray(resources) ? resources : [resources]).map(resource => ({ ...resource.attributes, id: resource.id, routeId: resource.relationships?.route?.data?.id }));
         });
+        this.#cache.setRelationship('route_pattern', 'route', 'route');
+        this.#cache.setRelationship('trip', 'route', 'route_pattern.route');
         const routeFilter = ROUTES_IDS.join(',')
         const routes = this.client.streamRoutes({ 'filter[id]': routeFilter, include: 'route_patterns.representative_trip.shape' });
         this.#cache.bind(routes);
