@@ -193,11 +193,11 @@ interface ScheduleResource extends Resource<'schedule'> {
         /**
          * The sequence the `stop_id` is arrived at during the `trip_id`.  The stop sequence is monotonically increasing along the trip, but the `stop_sequence` along the `trip_id` are not necessarily consecutive.  See [GTFS `stop_times.txt` `stop_sequence`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          */
-        stopSequence?: number;
+        stop_sequence?: number;
         /**
          * Text identifying destination of the trip, overriding trip-level headsign if present.See [GTFS `stop_times.txt` `stop_headsign`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          */
-        stopHeadsign?: string;
+        stop_headsign?: string;
         /**
          * How the vehicle departs from `stop_id`.
          *
@@ -210,7 +210,7 @@ interface ScheduleResource extends Resource<'schedule'> {
          *
          * See [GTFS `stop_times.txt` `pickup_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          */
-        pickupType?: number;
+        pickup_type?: number;
         /**
          * How the vehicle arrives at `stop_id`.
          *
@@ -223,23 +223,22 @@ interface ScheduleResource extends Resource<'schedule'> {
          *
          * See [GTFS `stop_times.txt` `drop_off_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          */
-        dropOffType?: number;
-        /**
+        drop_off_type?: number;        /**
          * Direction in which trip is traveling: `0` or `1`.
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
          */
-        directionId?: number;
+        direction_id?: number;
         /**
          * Time when the trip departs the given stop. See [GTFS `stop_times.txt` `departure_time`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          * Format is ISO8601.
          */
-        departureTime?: string;
+        departure_time?: string;
         /**
          * Time when the trip arrives at the given stop. See [GTFS `stop_times.txt` `arrival_time`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          * Format is ISO8601.
          */
-        arrivalTime?: string;
+        arrival_time?: string;
     };
 }
 /**
@@ -291,7 +290,7 @@ interface TripResource extends Resource<'trip'> {
                 id: string;
             };
         };
-        routePattern?: {
+        route_pattern?: {
             links?: {
                 /**
                  * Relationship link for route_pattern
@@ -371,14 +370,14 @@ interface TripResource extends Resource<'trip'> {
          * | `1`   | Accessible (at stops allowing wheelchair_boarding) |
          * | `2`   | Inaccessible                                       |
          */
-        wheelchairAccessible?: number;
+        wheelchair_accessible?: number;
         /**
          * | Value           | Description |
          * |-----------------|-------------|
          * | `"REVENUE"`     | Indicates that the associated trip is accepting passengers. |
          * | `"NON_REVENUE"` | Indicates that the associated trip is not accepting passengers. |
          */
-        revenueStatus?: string;
+        revenue_status?: string;
         /**
          * The text that appears in schedules and sign boards to identify the trip to passengers, for example, to identify train numbers for commuter rail trips. See [GTFS `trips.txt` `trip_short_name`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt)
          */
@@ -392,11 +391,11 @@ interface TripResource extends Resource<'trip'> {
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
          */
-        directionId?: number;
+        direction_id?: number;
         /**
          * ID used to group sequential trips with the same vehicle for a given service_id. See [GTFS `trips.txt` `block_id`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#tripstxt)
          */
-        blockId?: string;
+        block_id?: string;
         /**
          * Indicator of whether or not bikes are allowed on this trip: `0`, `1`, `2`
          *
@@ -408,7 +407,7 @@ interface TripResource extends Resource<'trip'> {
          * | `1`   | Vehicle being used on this particular trip can accommodate at least one bicycle |
          * | `2`   | No bicycles are allowed on this trip                                            |
          */
-        bikesAllowed?: number;
+        bikes_allowed?: number;
     };
 }
 /**
@@ -501,7 +500,7 @@ interface ShapeResource extends Resource<'shape'> {
  */
 interface RouteResource extends Resource<'route'> {
     relationships?: {
-        routePatterns?: {
+        route_patterns?: {
             links?: {
                 /**
                  * Relationship link for route_patterns
@@ -583,23 +582,23 @@ interface RouteResource extends Resource<'route'> {
         /**
          * A legible color to use for text drawn against a background of the route's `color` attribute. See [GTFS `routes.txt` `route_text_color`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
          */
-        textColor?: string;
+        text_color?: string;
         /**
          * Routes sort in ascending order
          */
-        sortOrder?: number;
+        sort_order?: number;
         /**
          * This will often be a short, abstract identifier like "32", "100X", or "Green" that riders use to identify a route, but which doesn't give any indication of what places the route serves. See [GTFS `routes.txt` `route_short_name`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
          */
-        shortName?: string;
+        short_name?: string;
         /**
          * The full name of a route. This name is generally more descriptive than the `short_name` and will often include the route's destination or stop. See [GTFS `routes.txt` `route_long_name`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
          */
-        longName?: string;
+        long_name?: string;
         /**
          * Specifies the fare type of the route, which can differ from the service category.
          */
-        fareClass?: string;
+        fare_class?: string;
         directionNames?: string[];
         directionDestinations?: string[];
         /**
@@ -728,7 +727,7 @@ interface FacilityResource extends Resource<'facility'> {
         /**
          * Short name of the facility
          */
-        shortName?: string;
+        short_name?: string;
         /**
          * A list of name/value pairs that apply to the facility. See [MBTA's facility documentation](https://www.mbta.com/developers/gtfs/f#facilities_properties_definitions) for more information on the possible names and values.
          */
@@ -741,7 +740,7 @@ interface FacilityResource extends Resource<'facility'> {
         /**
          * Name of the facility
          */
-        longName?: string;
+        long_name?: string;
         /**
          * Latitude of the facility.  Degrees North, in the [WGS-84](https://en.wikipedia.org/wiki/World_Geodetic_System#A_new_World_Geodetic_System:_WGS.C2.A084) coordinate system. See [GTFS `facilities.txt` `facility_lat`]
          */
@@ -817,7 +816,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Date/Time alert last updated. Format is ISO8601.
          */
-        updatedAt?: string;
+        updated_at?: string;
         /**
          * Summarizes when an alert is in effect.
          */
@@ -825,7 +824,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * A shortened version of `*\/attributes/header`.
          */
-        shortHeader?: string;
+        short_header?: string;
         /**
          * How severe the alert is from least (`0`) to most (`10`) severe.
          */
@@ -833,7 +832,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Summarizes the service and the impact to that service.
          */
-        serviceEffect?: string;
+        service_effect?: string;
         /**
          * Identifies whether alert is a new or old, in effect or upcoming.
          *
@@ -852,8 +851,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Text describing the appearance of the linked image in the image field.
          */
-        imageAlternativeText?: string;
-        /**
+        image_alternative_text?: string;        /**
          * URL of an image to be displayed alongside alert.
          */
         image?: string;
@@ -864,7 +862,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Name of the alert
          */
-        effectName?: string;
+        effect_name?: string;
         /**
          * The effect of this problem on the affected entity.
          *
@@ -914,7 +912,7 @@ interface AlertResource extends Resource<'alert'> {
          * | `"ESTIMATED"` |
          * Indicates whether an alert has a KNOWN, ESTIMATED, or UNKNOWN duration. KNOWN duration_certainty alerts are expected to end at the specified end time, ESTIMATED duration_certainty alerts have an estimated end time, and UNKNOWN duration_certainty alerts do not have a known or estimated end time.
          */
-        durationCertainty?: string;
+        duration_certainty?: string;
         /**
          * This plain-text string will be formatted as the body of the alert (or shown on an explicit "expand" request by the user). The information in the description should add to the information of the header. See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert` `description_text`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-alert)
          */
@@ -922,7 +920,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Date/Time alert created. Format is ISO8601.
          */
-        createdAt?: string;
+        created_at?: string;
         /**
          * What is causing the alert.
          *
@@ -1085,7 +1083,7 @@ interface InformedEntity {
      * | `3`   | Bus           |            |
      * | `4`   | Ferry         |            |
      */
-    routeType?: number;
+    route_type?: number;
     /**
      * `id` of the affected Route.
      */
@@ -1099,7 +1097,7 @@ interface InformedEntity {
      *
      * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
      */
-    directionId?: number;
+    direction_id?: number;
     /**
      * Activities affected by this alert.
      *
@@ -1259,13 +1257,13 @@ interface PredictionResource extends Resource<'prediction'> {
          * | `"AT_TERMINAL"`  | Prediction is for a terminal trip that hasn't started yet. |
          * | `"REVERSE_TRIP"` | Prediction is for a trip that hasn't started and the train that will be servicing this trip is currently in the middle of a previous trip. |
          */
-        updateType?: string;
+        update_type?: string;
         /**
          * The sequence the stop (`*\/relationships/stop/data/id`) is arrived at during the trip (`*\/relationships/trip/data/id`).  The stop sequence is monotonically increasing along the trip, but the `stop_sequence` along the trip are not necessarily consecutive.
          *
          * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `stop_sequence`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate).
          */
-        stopSequence?: number;
+        stop_sequence?: number;
         /**
          * Status of the schedule
          */
@@ -1285,20 +1283,20 @@ interface PredictionResource extends Resource<'prediction'> {
          * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `TripDescriptor` `ScheduleRelationship`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-schedulerelationship-1)
          * See [GTFS Realtime `FeedMesage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `ScheduleRelationship`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-schedulerelationship)
          */
-        scheduleRelationship?: string;
+        schedule_relationship?: string;
         /**
          * | Value           | Description |
          * |-----------------|-------------|
          * | `"REVENUE"`     | Indicates that the associated trip is accepting passengers. |
          * | `"NON_REVENUE"` | Indicates that the associated trip is not accepting passengers. |
          */
-        revenueStatus?: string;
+        revenue_status?: string;
         /**
          * Direction in which trip is traveling: `0` or `1`.
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
          */
-        directionId?: number;
+        direction_id?: number;
         /**
          * Uncertainty value for the departure time prediction.
          *
@@ -1326,7 +1324,7 @@ interface PredictionResource extends Resource<'prediction'> {
          * When the vehicle is now predicted to depart.  `null` if the last stop (`*\/relationships/stop/data/id`) on the trip (`*\/relationships/trip/data/id`). See [GTFS `Realtime` `FeedMessage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `departure`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate).
          * Format is ISO8601.
          */
-        departureTime?: string;
+        departure_time?: string;
         /**
          * Uncertainty value for the arrival time prediction.
          *
@@ -1355,7 +1353,7 @@ interface PredictionResource extends Resource<'prediction'> {
          * When the vehicle is now predicted to arrive.  `null` if the first stop (`*\/relationships/stop/data/id`) on the trip (`*\/relationships/trip/data/id`). See [GTFS `Realtime` `FeedMessage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `arrival`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate).
          * Format is ISO8601.
          */
-        arrivalTime?: string;
+        arrival_time?: string;
     };
 }
 /**
@@ -1363,7 +1361,7 @@ interface PredictionResource extends Resource<'prediction'> {
  */
 interface StopResource extends Resource<'stop'> {
     relationships?: {
-        parentStation?: {
+        parent_station?: {
             links?: {
                 /**
                  * Relationship link for parent_station
@@ -1399,7 +1397,7 @@ interface StopResource extends Resource<'stop'> {
          * | `1`   | Accessible (if trip is wheelchair accessible) |
          * | `2`   | Inaccessible                                  |
          */
-        wheelchairBoarding?: number;
+        wheelchair_boarding?: number;
         /**
          * The type of transportation used at the stop. `vehicle_type` will be a valid routes.txt `route_type` value:
          *
@@ -1411,19 +1409,19 @@ interface StopResource extends Resource<'stop'> {
          * | `3`   | Bus           |            |
          * | `4`   | Ferry         |            |
          */
-        vehicleType?: number;
+        vehicle_type?: number;
         /**
          * A textual description of the platform or track. See [MBTA extensions to GTFS](https://docs.google.com/document/d/1RoQQj3_-7FkUlzFP4RcK1GzqyHp4An2lTFtcmW0wrqw/view).
          */
-        platformName?: string;
+        platform_name?: string;
         /**
          * A short code representing the platform/track (like a number or letter). See [GTFS `stops.txt` `platform_code`](https://developers.google.com/transit/gtfs/reference/gtfs-extensions#stopstxt_1).
          */
-        platformCode?: string;
+        platform_code?: string;
         /**
          * The street on which the stop is located.
          */
-        onStreet?: string;
+        on_street?: string;
         /**
          * Name of a stop or station in the local and tourist vernacular.  See [GTFS `stops.txt` `stop_name](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt)
          */
@@ -1449,7 +1447,7 @@ interface StopResource extends Resource<'stop'> {
          *
          * See also [GTFS `stops.txt` `location_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt).
          */
-        locationType?: number;
+        location_type?: number;
         /**
          * Latitude of the stop or station.  Degrees North, in the [WGS-84](https://en.wikipedia.org/wiki/World_Geodetic_System#A_new_World_Geodetic_System:_WGS.C2.A084) coordinate system. See [GTFS `stops.txt` `stop_lat`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stopstxt).
          */
@@ -1461,7 +1459,7 @@ interface StopResource extends Resource<'stop'> {
         /**
          * The cross street at which the stop is located.
          */
-        atStreet?: string;
+        at_street?: string;
         /**
          * A street address for the station. See [MBTA extensions to GTFS](https://docs.google.com/document/d/1RoQQj3_-7FkUlzFP4RcK1GzqyHp4An2lTFtcmW0wrqw/view).
          */
@@ -1513,7 +1511,7 @@ interface LiveFacilityResource extends Resource<'live_facility'> {
         /**
          * Time of last update
          */
-        updatedAt?: string;
+        updated_at?: string;
         /**
          * A list of name/value pairs that apply to the facility. See [MBTA's facility documentation](https://www.mbta.com/developers/gtfs/f#facilities_properties_definitions) for more information on the possible names and values.
          */
@@ -1885,7 +1883,7 @@ interface VehicleResource extends Resource<'vehicle'> {
         /**
          * Time at which vehicle information was last updated. Format is ISO8601.
          */
-        updatedAt?: string;
+        updated_at?: string;
         /**
          * Speed that the vehicle is traveling in meters per second. See [GTFS-realtime Position speed](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-position).
          */
@@ -1896,7 +1894,7 @@ interface VehicleResource extends Resource<'vehicle'> {
          * | `"REVENUE"`     | Indicates that the associated trip is accepting passengers. |
          * | `"NON_REVENUE"` | Indicates that the associated trip is not accepting passengers. |
          */
-        revenueStatus?: string;
+        revenue_status?: string;
         /**
          * The degree of passenger occupancy for the vehicle. See [GTFS-realtime OccupancyStatus](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-vehiclestopstatus).
          *
@@ -1910,7 +1908,7 @@ interface VehicleResource extends Resource<'vehicle'> {
          * | **NOT_ACCEPTING_PASSENGERS**   | Not accepting passengers: the vehicle is not accepting passengers, the vehicle or carriage usually accepts passengers for boarding. |
          * | **NO_DATA_AVAILABLE**          | No data available: the vehicle doesn't have any occupancy data available at that time. |
          */
-        occupancyStatus?: string;
+        occupancy_status?: string;
         /**
          * Longitude of the vehicle's current position.  Degrees East, in the [WGS-84](https://en.wikipedia.org/wiki/World_Geodetic_System#Longitudes_on_WGS.C2.A084) coordinate system. See [GTFS-realtime Position longitude](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-position).
          */
@@ -1928,12 +1926,11 @@ interface VehicleResource extends Resource<'vehicle'> {
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
          */
-        directionId?: number;
+        direction_id?: number;
         /**
          * Index of current stop along trip. See [GTFS-realtime VehiclePosition current_stop_sequence](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-vehicleposition)
          */
-        currentStopSequence?: number;
-        /**
+        current_stop_sequence?: number;        /**
          * Status of vehicle relative to the stops. See [GTFS-realtime VehicleStopStatus](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-vehiclestopstatus).
          *
          * | _**Value**_       | _**Description**_                                                                                          |
@@ -1942,7 +1939,7 @@ interface VehicleResource extends Resource<'vehicle'> {
          * | **STOPPED_AT**    | The vehicle is standing at the stop.                                                                       |
          * | **IN_TRANSIT_TO** | The vehicle has departed the previous stop and is in transit.                                              |
          */
-        currentStatus?: string;
+        current_status?: string;
         /**
          * Carriage-level crowding details. See [GTFS-realtime multi_carriage_details](https://gtfs.org/documentation/realtime/reference/#message-carriagedetails).
          */
@@ -1960,11 +1957,11 @@ interface VehicleResource extends Resource<'vehicle'> {
              * | **NOT_ACCEPTING_PASSENGERS**   | Not accepting passengers: the vehicle is not accepting passengers, the vehicle or carriage usually accepts passengers for boarding. |
              * | **NO_DATA_AVAILABLE**          | No data available: the vehicle doesn't have any occupancy data available at that time. |
              */
-            occupancyStatus?: string;
+            occupancy_status?: string;
             /**
              * Percentage of vehicle occupied, calculated via weight average
              */
-            occupancyPercentage?: number;
+            occupancy_percentage?: number;
             /**
              * Carriage-specific label, used as an identifier
              */
@@ -2037,7 +2034,7 @@ interface ServiceResource extends Resource<'service'> {
         /**
          * Earliest date which is valid for this service. Format is ISO8601.
          */
-        startDate?: string;
+        start_date?: string;
         /**
          * Describes how well this schedule represents typical service for the listed `schedule_type`
          *
@@ -2051,35 +2048,33 @@ interface ServiceResource extends Resource<'service'> {
          * | `5`   | Major reductions in service for weather events or other atypical situations |
          * | `6`   | Canonical service contains default stopping patterns for selected routes, including temporarily closed stops; not active on any dates |
          */
-        scheduleTypicality?: number;
+        schedule_typicality?: number;
         /**
          * Description of the schedule type the service_id can be applied.
          * For example, on a holiday, the schedule_type value may be "Saturday" or "Sunday".
          * Current valid values are "Weekday", "Saturday", "Sunday", or "Other"
          */
-        scheduleType?: string;
+        schedule_type?: string;
         /**
          * Description of when the `service_id` is in effect.
          */
-        scheduleName?: string;
+        schedule_name?: string;
         removedDatesNotes?: string[];
         removedDates?: string[];
         /**
          * Earliest date which is a part of the rating (season) which contains this service. Format is ISO8601.
          */
-        ratingStartDate?: string;
-        /**
+        rating_start_date?: string;        /**
          * Latest date which is a part of the rating (season) which contains this service. Format is ISO8601.
          */
-        ratingEndDate?: string;
-        /**
+        rating_end_date?: string;        /**
          * Human-readable description of the rating (season), as it should appear on public-facing websites and applications.
          */
-        ratingDescription?: string;
+        rating_description?: string;
         /**
          * Latest date which is valid for this service. Format is ISO8601.
          */
-        endDate?: string;
+        end_date?: string;
         /**
          * Human-readable description of the service, as it should appear on public-facing websites and applications.
          */
@@ -2237,7 +2232,7 @@ interface RoutePatternResource extends Resource<'route_pattern'> {
                 id: string;
             };
         };
-        representativeTrip?: {
+        representative_trip?: {
             links?: {
                 /**
                  * Relationship link for representative_trip
@@ -2277,12 +2272,12 @@ interface RoutePatternResource extends Resource<'route_pattern'> {
         /**
          * User-facing description of when the route pattern operate. Not all route patterns will include a time description
          */
-        timeDesc?: string;
+        time_desc?: string;
         /**
          * Can be used to order the route patterns in a way which is ideal for presentation to customers.
          * Route patterns with smaller sort_order values should be displayed before those with larger values.
          */
-        sortOrder?: number;
+        sort_order?: number;
         /**
          * User-facing description of where trips on the route pattern serve.
          * These names are published in the form
@@ -2299,7 +2294,7 @@ interface RoutePatternResource extends Resource<'route_pattern'> {
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
          */
-        directionId?: number;
+        direction_id?: number;
         /**
          * Indicates whether or not the route pattern can be considered canonical and the default set of stops
          * for the given route and direction.
@@ -2453,19 +2448,19 @@ interface LineResource extends Resource<'line'> {
         /**
          * This field can be used to specify a legible color to use for text drawn against a background of line_color. The color must be provided as a six-character hexadecimal number, for example, `FFD700`.
          */
-        textColor?: string;
+        text_color?: string;
         /**
          * Lines sort in ascending order
          */
-        sortOrder?: number;
+        sort_order?: number;
         /**
          * Short, public-facing name for the group of routes represented in this line
          */
-        shortName?: string;
+        short_name?: string;
         /**
          * Lengthier, public-facing name for the group of routes represented in this line
          */
-        longName?: string;
+        long_name?: string;
         /**
          * In systems that have colors assigned to lines, the route_color field defines a color that corresponds to a line. The color must be provided as a six-character hexadecimal number, for example, `00FFFF`.
          */
@@ -2603,14 +2598,14 @@ interface getVehiclesOptions {
      *
      * Only used if `filter[route]` is also present.
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by route_type: https://gtfs.org/documentation/schedule/reference/#routestxt.
      *
      * Multiple `route_type` **MUST** be a comma-separated (U+002C COMMA, ",") list.
      *
      */
-    "filter[routeType]"?: string;
+    "filter[route_type]"?: string;
     /**
      * Filter vehicles by revenue status.
      * Revenue status indicates whether or not the vehicle is accepting passengers.
@@ -2731,7 +2726,7 @@ interface getTripsOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by `/data/{index}/relationships/route/data/id`.
      *
@@ -2750,7 +2745,7 @@ interface getTripsOptions {
     /**
      * Filter by route pattern IDs **MUST** be a comma-separated (U+002C COMMA, ",") list.
      */
-    "filter[routePattern]"?: string;
+    "filter[route_pattern]"?: string;
     /**
      * Filter by multiple IDs. **MUST** be a comma-separated (U+002C COMMA, ",") list.
      */
@@ -2855,7 +2850,7 @@ interface getStopsOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Latitude in degrees North in the [WGS-84](https://en.wikipedia.org/wiki/World_Geodetic_System#A_new_World_Geodetic_System:_WGS.C2.A084) coordinate system to search `filter[radius]` degrees around with `filter[longitude]`.
      */
@@ -2878,7 +2873,7 @@ interface getStopsOptions {
      * Multiple `route_type` **MUST** be a comma-separated (U+002C COMMA, ",") list.
      *
      */
-    "filter[routeType]"?: string;
+    "filter[route_type]"?: string;
     /**
      * Filter by `/data/{index}/relationships/route/data/id`.
      *
@@ -2893,7 +2888,7 @@ interface getStopsOptions {
     /**
      * Filter by location_type https://github.com/mbta/gtfs-documentation/blob/master/reference/gtfs.md#stopstxt. Multiple location_type **MUST** be a comma-separated (U+002C COMMA, ",") list.
      */
-    "filter[locationType]"?: string;
+    "filter[location_type]"?: string;
 }
 interface getShapeOptions {
     /**
@@ -3065,7 +3060,7 @@ interface getSchedulesOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by route_type: https://gtfs.org/documentation/schedule/reference/#routestxt.
      *
@@ -3073,15 +3068,15 @@ interface getSchedulesOptions {
      *
      * Must be used in conjunction with another filter.
      */
-    "filter[routeType]"?: string;
+    "filter[route_type]"?: string;
     /**
      * Time before which schedule should not be returned. To filter times after midnight use more than 24 hours. For example, min_time=24:00 will return schedule information for the next calendar day, since that service is considered part of the current service day. Additionally, min_time=00:00&max_time=02:00 will not return anything. The time format is HH:MM.
      */
-    "filter[minTime]"?: string;
+    "filter[min_time]"?: string;
     /**
      * Time after which schedule should not be returned. To filter times after midnight use more than 24 hours. For example, min_time=24:00 will return schedule information for the next calendar day, since that service is considered part of the current service day. Additionally, min_time=00:00&max_time=02:00 will not return anything. The time format is HH:MM.
      */
-    "filter[maxTime]"?: string;
+    "filter[max_time]"?: string;
     /**
      * Filter by `/data/{index}/relationships/route/data/id`.
      *
@@ -3107,7 +3102,7 @@ interface getSchedulesOptions {
     /**
      * Filter by the index of the stop in the trip.  Symbolic values `first` and `last` can be used instead of numeric sequence number too.
      */
-    "filter[stopSequence]"?: string;
+    "filter[stop_sequence]"?: string;
 }
 interface getRouteOptions {
     /**
@@ -3209,7 +3204,7 @@ interface getRoutesOptions {
      *
      * When combined with stop_id, filters by routes which stop at that stop when traveling in a particular direction
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by date that route is active The active date is the service date. Trips that begin between midnight and 3am are considered part of the previous service day. The format is ISO8601 with the template of YYYY-MM-DD.
      */
@@ -3225,7 +3220,7 @@ interface getRoutePatternOptions {
      *
      * Note that fields can also be selected for included data types: see the [V3 API Best Practices](https://www.mbta.com/developers/v3-api/best-practices) for an example.
      */
-    "fields[routePattern]"?: string;
+    "fields[route_pattern]"?: string;
     /**
      * Relationships to include.
      *
@@ -3274,7 +3269,7 @@ interface getRoutePatternsOptions {
      *
      * Note that fields can also be selected for included data types: see the [V3 API Best Practices](https://www.mbta.com/developers/v3-api/best-practices) for an example.
      */
-    "fields[routePattern]"?: string;
+    "fields[route_pattern]"?: string;
     /**
      * Relationships to include.
      *
@@ -3307,7 +3302,7 @@ interface getRoutePatternsOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by `/data/{index}/relationships/stop/data/id`.
      *
@@ -3451,7 +3446,7 @@ interface getPredictionsOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by route_type: https://gtfs.org/documentation/schedule/reference/#routestxt.
      *
@@ -3459,7 +3454,7 @@ interface getPredictionsOptions {
      *
      * Must be used in conjunction with another filter.
      */
-    "filter[routeType]"?: string;
+    "filter[route_type]"?: string;
     /**
      * Filter by `/data/{index}/relationships/stop/data/id`.
      *
@@ -3493,7 +3488,7 @@ interface getPredictionsOptions {
     /**
      * Filter by `/included/{index}/relationships/route_pattern/data/id` of a trip. Multiple `route_pattern_id` **MUST** be a comma-separated (U+002C COMMA, ",") list.
      */
-    "filter[routePattern]"?: string;
+    "filter[route_pattern]"?: string;
 }
 interface getLiveFacilityOptions {
     /**
@@ -3803,7 +3798,7 @@ interface getAlertsOptions {
      * Multiple `route_type` **MUST** be a comma-separated (U+002C COMMA, ",") list.
      *
      */
-    "filter[routeType]"?: string;
+    "filter[route_type]"?: string;
     /**
      * Filter by direction of travel along the route. Must be used in conjuction with `filter[route]` to apply.
      *
@@ -3811,7 +3806,7 @@ interface getAlertsOptions {
      *
      *
      */
-    "filter[directionId]"?: string;
+    "filter[direction_id]"?: string;
     /**
      * Filter by `/data/{index}/relationships/route/data/id`.
      *

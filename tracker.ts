@@ -11,7 +11,7 @@ type Unionable<T> = T extends {} ? T : {};
 type APIResource<T extends Resource = Resource, U extends Record<string, any> = Unionable<T['attributes']>> = Pick<T, 'id'> & U;
 type APIIdentifier<T extends APIResource = APIResource> = Pick<T, 'id'>;
 type APIRoute = APIResource<RouteResource, RouteResource['attributes'] & { shapes: APIResourceMap['shape'][] }>;
-type APIVehicle = APIResource<VehicleResource, VehicleResource['attributes'] & { routeId?: string }>;
+type APIVehicle = APIResource<VehicleResource, VehicleResource['attributes'] & { route_id?: string }>;
 interface APICustomResourceMap {
     route: APIRoute;
     vehicle: APIVehicle;
@@ -252,7 +252,7 @@ class Tracker {
         });
         this.#cache.setAssociation('vehicle', 'vehicle', (cache, id) => {
             const resources = id ? cache.vehicle?.get(id) || [] : Array.from(cache.vehicle?.values() || []);
-            return (Array.isArray(resources) ? resources : [resources]).map(resource => ({ ...resource.attributes, id: resource.id, routeId: resource.relationships?.route?.data?.id }));
+            return (Array.isArray(resources) ? resources : [resources]).map(resource => ({ ...resource.attributes, id: resource.id, route_id: resource.relationships?.route?.data?.id }));
         });
         this.#cache.setRelationship('route_pattern', 'route', 'route');
         this.#cache.setRelationship('trip', 'route', 'route_pattern.route');
