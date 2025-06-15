@@ -223,7 +223,8 @@ interface ScheduleResource extends Resource<'schedule'> {
          *
          * See [GTFS `stop_times.txt` `drop_off_type`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#stop_timestxt)
          */
-        drop_off_type?: number;        /**
+        drop_off_type?: number;
+        /**
          * Direction in which trip is traveling: `0` or `1`.
          *
          * The meaning of `direction_id` varies based on the route. You can programmatically get the direction names from `/routes` `/data/{index}/attributes/direction_names` or `/routes/{id}` `/data/attributes/direction_names`.
@@ -495,6 +496,13 @@ interface ShapeResource extends Resource<'shape'> {
         polyline?: string;
     };
 }
+enum RouteType {
+    LIGHT_RAIL = 0,
+    HEAVY_RAIL = 1,
+    COMMUTER_RAIL = 2,
+    BUS = 3,
+    FERRY = 4
+}
 /**
  * Path a vehicle travels during service. See [GTFS `routes.txt`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt) for the base specification.
  */
@@ -578,7 +586,7 @@ interface RouteResource extends Resource<'route'> {
          * | `3`   | Bus           |            |
          * | `4`   | Ferry         |            |
          */
-        type?: number;
+        type?: RouteType;
         /**
          * A legible color to use for text drawn against a background of the route's `color` attribute. See [GTFS `routes.txt` `route_text_color`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
          */
@@ -599,8 +607,8 @@ interface RouteResource extends Resource<'route'> {
          * Specifies the fare type of the route, which can differ from the service category.
          */
         fare_class?: string;
-        directionNames?: string[];
-        directionDestinations?: string[];
+        direction_names?: string[];
+        direction_destinations?: string[];
         /**
          * Details about stops, schedule, and/or service.  See
          * [GTFS `routes.txt` `route_desc`](https://github.com/google/transit/blob/master/gtfs/spec/en/reference.md#routestxt).
@@ -847,11 +855,12 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Entities affected by this alert.
          */
-        informedEntity?: InformedEntity[];
+        informed_entity?: InformedEntity[];
         /**
          * Text describing the appearance of the linked image in the image field.
          */
-        image_alternative_text?: string;        /**
+        image_alternative_text?: string;
+        /**
          * URL of an image to be displayed alongside alert.
          */
         image?: string;
@@ -984,7 +993,7 @@ interface AlertResource extends Resource<'alert'> {
         /**
          * Date/Time ranges when alert is active. See [GTFS Realtime `FeedMessage` `FeedEntity` `Alert` `active_period`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-alert).
          */
-        activePeriod?: ActivePeriod[];
+        active_period?: ActivePeriod[];
     };
 }
 /**
@@ -1083,7 +1092,7 @@ interface InformedEntity {
      * | `3`   | Bus           |            |
      * | `4`   | Ferry         |            |
      */
-    route_type?: number;
+    route_type?: RouteType;
     /**
      * `id` of the affected Route.
      */
@@ -1930,7 +1939,8 @@ interface VehicleResource extends Resource<'vehicle'> {
         /**
          * Index of current stop along trip. See [GTFS-realtime VehiclePosition current_stop_sequence](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-vehicleposition)
          */
-        current_stop_sequence?: number;        /**
+        current_stop_sequence?: number;
+        /**
          * Status of vehicle relative to the stops. See [GTFS-realtime VehicleStopStatus](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#enum-vehiclestopstatus).
          *
          * | _**Value**_       | _**Description**_                                                                                          |
@@ -2030,7 +2040,7 @@ interface ServiceResource extends Resource<'service'> {
     relationships?: {};
     links?: {};
     attributes?: {
-        validDays?: number[];
+        valid_days?: number[];
         /**
          * Earliest date which is valid for this service. Format is ISO8601.
          */
@@ -2059,15 +2069,17 @@ interface ServiceResource extends Resource<'service'> {
          * Description of when the `service_id` is in effect.
          */
         schedule_name?: string;
-        removedDatesNotes?: string[];
-        removedDates?: string[];
+        removed_dates_notes?: string[];
+        removed_dates?: string[];
         /**
          * Earliest date which is a part of the rating (season) which contains this service. Format is ISO8601.
          */
-        rating_start_date?: string;        /**
+        rating_start_date?: string;
+        /**
          * Latest date which is a part of the rating (season) which contains this service. Format is ISO8601.
          */
-        rating_end_date?: string;        /**
+        rating_end_date?: string;
+        /**
          * Human-readable description of the rating (season), as it should appear on public-facing websites and applications.
          */
         rating_description?: string;
@@ -2079,8 +2091,8 @@ interface ServiceResource extends Resource<'service'> {
          * Human-readable description of the service, as it should appear on public-facing websites and applications.
          */
         description?: string;
-        addedDatesNotes?: string[];
-        addedDates?: string[];
+        added_dates_notes?: string[];
+        added_dates?: string[];
     };
 }
 /**
@@ -4525,6 +4537,7 @@ export {
     ResourceIdentifier,
     Resource,
     Document,
+    RouteType,
     ScheduleResource,
     TripResource,
     Facility,

@@ -1,11 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
-import { Client, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, VehicleResource } from "./api/mbta";
+import { Client, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, RouteType, VehicleResource } from "./api/mbta";
 
 /**
- * IDs of routes which should be tracked.
+ * Types of routes which should be tracked.
  */
-const ROUTES_IDS = ['Red', 'Orange', 'Green-B', 'Green-C', 'Green-D', 'Green-E', 'Blue'];
+const ROUTES_TYPES = [RouteType.LIGHT_RAIL, RouteType.HEAVY_RAIL];
 
 type Unionable<T> = T extends {} ? T : {};
 type APIResource<T extends Resource = Resource, U extends Record<string, any> = Unionable<T['attributes']>> = Pick<T, 'id'> & U;
@@ -256,10 +256,10 @@ class Tracker {
         });
         this.#cache.setRelationship('route_pattern', 'route', 'route');
         this.#cache.setRelationship('trip', 'route', 'route_pattern.route');
-        const routeFilter = ROUTES_IDS.join(',')
-        const routes = this.client.streamRoutes({ 'filter[id]': routeFilter, include: 'route_patterns.representative_trip.shape' });
+        const routeTypeFilter = ROUTES_TYPES.join(',')
+        const routes = this.client.streamRoutes({ 'filter[type]': routeTypeFilter, include: 'route_patterns.representative_trip.shape' });
         this.#cache.bind(routes);
-        const vehicles = this.client.streamVehicles({ 'filter[route]': routeFilter });
+        const vehicles = this.client.streamVehicles({ 'filter[route_type]': routeTypeFilter });
         this.#cache.bind(vehicles);
     }
 }
@@ -271,3 +271,4 @@ export {
     Tracker,
     tracker
 };
+
