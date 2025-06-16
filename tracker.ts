@@ -15,8 +15,7 @@ const MAPPINGS = (<T extends { [P in ResourceType]?: (resource: ResourceMap[P], 
             if (relationships?.route?.data?.id === id && state.shape && relationships.shape?.data) {
                 const shape = state.shape.get(relationships.shape.data.id);
                 if (shape) {
-                    const { id, attributes } = shape
-                    shapes.push({ id: id, polyline: attributes!.polyline });
+                    shapes.push({ id: shape.id, polyline: shape.attributes!.polyline });
                 }
             }
         }
@@ -55,23 +54,32 @@ const MAPPINGS = (<T extends { [P in ResourceType]?: (resource: ResourceMap[P], 
             label: carriage.label
         }))
     }),
-    stop: ({ id, attributes }, state) => ({
-        id,
-        routeIds: state.route, // TODO
-        name: attributes!.name!,
-        latitude: attributes!.latitude!,
-        longitude: attributes!.longitude!,
-        wheelchairBoarding: attributes!.wheelchair_boarding,
-        vehicleType: attributes!.vehicle_type,
-        platformName: attributes!.platform_name,
-        platformCode: attributes!.platform_code,
-        onStreet: attributes!.on_street,
-        municipality: attributes!.municipality,
-        locationType: attributes!.location_type,
-        description: attributes!.description,
-        atStreet: attributes!.at_street,
-        address: attributes!.address
-    })
+    stop: ({ id, attributes }, state) => {
+        const routeIds = new Set<string>();
+        for (const trip of state?.trip?.values() || []) {
+            const routeId = trip.relationships?.route?.data?.id;
+            if (routeId && trip.relationships?.stops?.data?.some(({ id: stopId }) => stopId === id)) {
+                routeIds.add(routeId);
+            }
+        }
+        return {
+            id,
+            routeIds: Array.from(routeIds),
+            name: attributes!.name!,
+            latitude: attributes!.latitude!,
+            longitude: attributes!.longitude!,
+            wheelchairBoarding: attributes!.wheelchair_boarding,
+            vehicleType: attributes!.vehicle_type,
+            platformName: attributes!.platform_name,
+            platformCode: attributes!.platform_code,
+            onStreet: attributes!.on_street,
+            municipality: attributes!.municipality,
+            locationType: attributes!.location_type,
+            description: attributes!.description,
+            atStreet: attributes!.at_street,
+            address: attributes!.address
+        }
+    }
 });
 type Mappings = typeof MAPPINGS;
 interface APIIdentifier {
@@ -213,7 +221,7 @@ class TrackerCache extends EventEmitter<EventMap> {
 
     relate(sourceType: ResourceType, resultType: APIResourceType, through: string) {
         if (resultType in this.#associations) {
-            const association = this.#associations[resultType] as Association;
+            const association = this.#associations[resultType]!;
             const parts = through.split('.');
             this.associate(sourceType, resultType, (cache, id) => {
                 const resources: Resource | Resource[] = (id ? cache[sourceType]?.get(id) || [] : Array.from<ResourceMap[keyof ResourceMap]>(cache[sourceType]?.values() || []));
@@ -235,10 +243,9 @@ class TrackerCache extends EventEmitter<EventMap> {
                         });
                     }
                     // return mapped resources
-                    return resources.flatMap(({ id }) => association.get(cache, id))
+                    return resources.flatMap(({ id }) => association.get(cache, id));
                 });
-            }
-            );
+            });
         }
     }
 
@@ -270,6 +277,7 @@ class Tracker {
                 type: `${type.toUpperCase()}_${event.toUpperCase()}`,
                 data: data
             };
+            console.log(payload.type);
             ws.send(JSON.stringify(payload));
         }
         const resetListener = listener.bind(this, 'reset');

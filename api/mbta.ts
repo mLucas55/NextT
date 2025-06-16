@@ -357,6 +357,31 @@ interface TripResource extends Resource<'trip'> {
                 id: string;
             };
         };
+        /**
+         * **NOTE**: This relationship is omitted from the offical MBTA API spec. This is likely an error as it can be included in the response.
+         */
+        stops?: {
+            links?: {
+                /**
+                 * Relationship link for stops
+                 */
+                self?: string;
+                /**
+                 * Related stops link
+                 */
+                related?: string;
+            };
+            data?: {
+                /**
+                 * Type of related stops resource
+                 */
+                type: ResourceType;
+                /**
+                 * Related stops resource id
+                 */
+                id: string;
+            }[];
+        };
     };
     links?: {};
     attributes?: {
