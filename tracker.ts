@@ -230,16 +230,6 @@ class TrackerCache extends EventEmitter<EventMap> {
     #associations: Partial<Record<APIResourceType, AssociateFunction>>;
     #requesters: RequestFunction[];
 
-    get routes() {
-        return (this.#getPayload('route')?.data || []) as EventResource<APIResourceMap['route']>[];
-    }
-    get vehicles() {
-        return (this.#getPayload('vehicle')?.data || []) as EventResource<APIResourceMap['vehicle']>[];
-    }
-    get stops() {
-        return (this.#getPayload('stop')?.data || []) as EventResource<APIResourceMap['stop']>[];
-    }
-
     constructor() {
         super();
         this.#state = {};
@@ -282,6 +272,10 @@ class TrackerCache extends EventEmitter<EventMap> {
             const fn = this.#associations[type]!;
             return { type, data: fn(this.#state, id) }
         }
+    }
+
+    getEventResources<T extends APIResourceType>(type: T) {
+        return (this.#getPayload(type)?.data || []) as EventResource<APIResourceMap[T]>[];
     }
 
     reset(resources: Resource[]) {
@@ -440,9 +434,9 @@ class Tracker {
                 filters.routeIds = data.routeIds ? new Set(data.routeIds) : null;
                 filters.routeTypes = data.routeTypes ? new Set(data.routeTypes) : null;
                 // sent initial reset events to sync data
-                reset({ type: 'route', data: this.#cache.routes });
-                reset({ type: 'vehicle', data: this.#cache.vehicles });
-                reset({ type: 'stop', data: this.#cache.stops });
+                for (const type of filters.types) {
+                    reset({ type, data: this.#cache.getEventResources(type) });
+                }
             } catch (e) {
                 console.error(e);
             }
