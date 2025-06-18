@@ -65,7 +65,7 @@ interface Resource<T extends ResourceType = ResourceType> {
 type ResourceIdentifier<T extends ResourceType = ResourceType> = Pick<Resource<T>, 'id' | 'type'>;
 type ResourceLinkage<T extends ResourceType = ResourceType> = ResourceIdentifier<T> | ResourceIdentifier<T>[] | null;
 type IResourceMap = {
-    [T in ResourceType]: Resource<T>;
+    [P in ResourceType]: Resource<P>;
 }
 interface ResourceMap extends IResourceMap {
     alert: AlertResource;
@@ -4561,6 +4561,9 @@ export {
     ResourceType,
     ResourceIdentifier,
     Resource,
+    DataDocument,
+    ErrorDocument,
+    MetaDocument,
     Document,
     RouteType,
     ScheduleResource,
