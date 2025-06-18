@@ -50,13 +50,13 @@ type Relationship<T extends ResourceType = ResourceType> = IRelationship<T> | Li
 type Relationships = Record<string, Relationship>;
 interface Resource<T extends ResourceType = ResourceType> {
     /**
-     * The JSON-API resource ID
-     */
-    id: string;
-    /**
      * The JSON-API resource type
      */
     type: T;
+    /**
+     * The JSON-API resource ID
+     */
+    id: string;
     attributes?: Record<string, any>;
     relationships?: Relationships;
     links?: Links;

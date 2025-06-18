@@ -247,9 +247,27 @@ class TrackerCache extends EventEmitter<EventMap> {
                 const data = Array.isArray(document.data) ? document.data : [document.data];
                 const included = document.included || [];
                 const resources = [...data, ...included];
+                // keep track of which resources are updated
+                const updatedIds: { [P in ResourceType]?: Set<string> } = {};
                 for (const resource of resources) {
-                    if (!areEqual(this.#state[resource.type]?.get(resource.id), resource)) {
+                    const { type, id } = resource;
+                    const old = this.#state[type]?.get(id);
+                    if (!old) {
+                        this.add(resource);
+                    } else if (!areEqual(this.#state[type]?.get(id), resource)) {
+                        if (type in updatedIds) {
+                            updatedIds[type] = new Set();
+                        }
+                        updatedIds[type]!.add(id);
                         this.update(resource);
+                    }
+                }
+                // remove old resources
+                for (const updatedType in updatedIds) {
+                    for (const { type, id } of this.#state[updatedType as ResourceType]?.values() || []) {
+                        if (!updatedIds[type]!.has(id)) {
+                            this.remove({ type: type, id: id });
+                        }
                     }
                 }
             }
@@ -324,7 +342,7 @@ class TrackerCache extends EventEmitter<EventMap> {
         }
     }
 
-    remove({ id, type }: ResourceIdentifier) {
+    remove({ type, id }: ResourceIdentifier) {
         const cache = this.#cacheOf(type);
         cache.delete(id);
         // send remove event if applicable
