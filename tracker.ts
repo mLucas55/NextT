@@ -270,6 +270,8 @@ class TrackerCache extends EventEmitter<EventMap> {
                         }
                     }
                 }
+            } else if ('errors' in document) {
+                console.error(document.errors);
             }
         }
     }
