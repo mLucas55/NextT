@@ -254,7 +254,7 @@ class TrackerCache extends EventEmitter<EventMap> {
                     const old = this.#state[type]?.get(id);
                     if (!old) {
                         this.add(resource);
-                    } else if (!areEqual(this.#state[type]?.get(id), resource)) {
+                    } else if (!areEqual(old, resource)) {
                         if (type in updatedIds) {
                             updatedIds[type] = new Set();
                         }
