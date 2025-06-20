@@ -409,11 +409,7 @@ class Tracker {
             routeTypes: new Set()
         };
         function forward<T extends EventType>(event: T, { type, data }: PayloadMap[T]) {
-            const payload = {
-                type: `${type.toUpperCase()}_${event.toUpperCase()}`,
-                data: data
-            };
-            ws.send(JSON.stringify(payload));
+            ws.send(JSON.stringify({ event, type, data }));
         }
         function reset({ type, data }: EventPayloadMap['reset']) {
             data = data.filter(resource => matchesFilters(type, resource.routes, filters));
