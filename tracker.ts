@@ -1,7 +1,8 @@
 import { EventSource } from 'eventsource';
 import { EventEmitter } from 'node:events';
+import { isDeepStrictEqual } from 'node:util';
 import { WebSocket } from 'ws';
-import { Client, Document, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, RouteType, StopResource, VehicleResource } from "./api/mbta";
+import { AlertResource, Client, Document, PredictionResource, Resource, ResourceIdentifier, ResourceMap, ResourceType, RouteResource, RouteType, ScheduleResource, StopResource, VehicleResource } from "./api/mbta";
 
 /**
  * -------------
@@ -12,13 +13,16 @@ import { Client, Document, Resource, ResourceIdentifier, ResourceMap, ResourceTy
 /**
  * Types of routes which should be tracked.
  */
-const ROUTES_TYPES = [RouteType.LIGHT_RAIL, RouteType.HEAVY_RAIL];
+const ROUTES_TYPES = [RouteType.LIGHT_RAIL, RouteType.HEAVY_RAIL, RouteType.COMMUTER_RAIL];
 
-const MAPPERS = (<T extends { [P in APIResourceType]: (resource: ResourceMap[P], state: Partial<ResourceCache>) => EventResource<APIResource> }>(value: T) => value)({
+const MAPPERS = {
     route: mapRoute,
     vehicle: mapVehicle,
-    stop: mapStop
-});
+    stop: mapStop,
+    schedule: mapSchedule,
+    prediction: mapPrediction,
+    alert: mapAlert
+} as const satisfies { [P in APIResourceType]: (resource: ResourceMap[P], state: Partial<ResourceCache>) => EventResource<APIResourceMap[P]> };
 
 /*
  * ---------
@@ -26,7 +30,7 @@ const MAPPERS = (<T extends { [P in APIResourceType]: (resource: ResourceMap[P],
  * ---------
  */
 
-type APIResourceType = Extract<ResourceType, 'route' | 'vehicle' | 'stop'>;
+type APIResourceType = Extract<ResourceType, 'route' | 'vehicle' | 'stop' | 'alert' | 'schedule' | 'prediction'>;
 interface APIIdentifier {
     id: string;
 }
@@ -36,7 +40,10 @@ type IAPIResourceMap = {
 interface APIResourceMap extends IAPIResourceMap {
     route: ReturnType<typeof mapRoute>['resource'];
     vehicle: ReturnType<typeof mapVehicle>['resource'];
-    stop: ReturnType<typeof mapStop>['resource'];
+    stop: NonNullable<ReturnType<typeof mapStop>>['resource'];
+    schedule: ReturnType<typeof mapSchedule>['resource'];
+    prediction: ReturnType<typeof mapPrediction>['resource'];
+    alert: ReturnType<typeof mapAlert>['resource'];
 }
 type APIResource = APIResourceMap[APIResourceType];
 type ResourceCache = {
@@ -50,7 +57,8 @@ type RequestFunction = () => Promise<Document>;
 type EventType = 'reset' | 'add' | 'update' | 'remove';
 interface EventResource<T extends APIIdentifier = APIIdentifier> {
     resource: T;
-    routes: RouteResource[];
+    routes?: RouteResource[];
+    stopId?: string;
 }
 interface StreamEventMap<T extends APIResourceType = APIResourceType> extends Record<EventType, EventResource[] | EventResource> {
     reset: EventResource<APIResourceMap[T]>[];
@@ -77,11 +85,13 @@ interface EventFilter {
     types: Set<APIResourceType>;
     routeIds: Set<string> | null;
     routeTypes: Set<RouteType> | null;
+    stopIds: Set<string>;
 }
 interface WebsocketPayload {
     types: APIResourceType[]
     routeIds?: string[];
     routeTypes?: RouteType[];
+    stopIds?: string[];
 }
 
 /*
@@ -89,6 +99,15 @@ interface WebsocketPayload {
  * | Functions |
  * -------------
  */
+
+function forEachRouteIdInStop(stopId: string, state: Partial<ResourceCache>, callbackfn: (routeId: string) => void) {
+    for (const trip of state?.trip?.values() || []) {
+        const routeId = trip.relationships?.route?.data?.id;
+        if (routeId && trip.relationships?.stops?.data?.some(({ id }) => id === stopId)) {
+            callbackfn(routeId);
+        }
+    }
+}
 
 function mapRoute(route: RouteResource, state: Partial<ResourceCache>) {
     const { id, attributes } = route;
@@ -116,8 +135,7 @@ function mapRoute(route: RouteResource, state: Partial<ResourceCache>) {
             directionDestinations: attributes!.direction_destinations,
             description: attributes!.description,
             color: attributes!.color
-        },
-        routes: [route]
+        }
     };
 }
 
@@ -149,14 +167,13 @@ function mapVehicle({ id, attributes, relationships }: VehicleResource, state: P
 
 function mapStop({ id, attributes }: StopResource, state: Partial<ResourceCache>) {
     const routeIds = new Set<string>();
-    const routes = [];
-    for (const trip of state?.trip?.values() || []) {
-        const routeId = trip.relationships?.route?.data?.id;
-        if (routeId && trip.relationships?.stops?.data?.some(({ id: stopId }) => stopId === id) && !routeIds.has(routeId)) {
+    const routes: RouteResource[] = [];
+    forEachRouteIdInStop(id, state, (routeId) => {
+        if (!routeIds.has(routeId)) {
             routeIds.add(routeId);
             routes.push(state.route!.get(routeId)!);
         }
-    }
+    });
     return {
         resource: {
             id,
@@ -175,48 +192,155 @@ function mapStop({ id, attributes }: StopResource, state: Partial<ResourceCache>
             atStreet: attributes!.at_street,
             address: attributes!.address
         },
-        routes: routes
+        routes
+    };
+}
+
+function mapSchedule({ id, attributes, relationships }: ScheduleResource, state: Partial<ResourceCache>) {
+    return {
+        resource: {
+            id,
+            stopId: relationships!.stop!.data!.id,
+            timepoint: attributes!.timepoint,
+            stopSequence: attributes!.stop_sequence,
+            stopHeadsign: attributes!.stop_headsign,
+            pickupType: attributes!.pickup_type,
+            dropOffType: attributes!.drop_off_type,
+            directionId: attributes!.direction_id,
+            departureTime: attributes!.departure_time,
+            arrivalTime: attributes!.arrival_time
+        },
+        stopId: relationships!.stop!.data!.id
     }
 }
 
-function matchesFilters(type: APIResourceType, routes: RouteResource[], filter: EventFilter) {
-    if (filter.types && !filter.types.has(type)) {
+function mapPrediction({ id, attributes, relationships }: PredictionResource, state: Partial<ResourceCache>) {
+    return {
+        resource: {
+            id,
+            vehicleId: relationships!.vehicle?.data?.id,
+            stopId: relationships!.stop?.data?.id,
+            scheduleId: relationships!.schedule?.data?.id,
+            arrivalTime: attributes!.arrival_time!,
+            departureTime: attributes!.departure_time!,
+            updateType: attributes!.update_type,
+            stopSequence: attributes!.stop_sequence,
+            status: attributes!.status,
+            scheduleRelationship: attributes!.schedule_relationship,
+            revenueStatus: attributes!.revenue_status,
+            directionId: attributes!.direction_id,
+            arrivalUncertainty: attributes!.arrival_uncertainty,
+            departureUncertainty: attributes!.departure_uncertainty
+        },
+        stopId: relationships!.stop?.data?.id
+    }
+}
+
+function mapAlert({ id, attributes }: AlertResource, state: Partial<ResourceCache>) {
+    const informedEntity = [];
+    const routeIds = new Set<string>();
+    const routes: RouteResource[] = [];
+    function addRouteId(routeId: string) {
+        if (!routeIds.has(routeId)) {
+            routeIds.add(routeId);
+            const route = state.route?.get(routeId);
+            if (route) {
+                routes.push(route);
+            }
+        }
+    }
+    // find related routes from informed entity
+    for (const { trip: tripId, stop: stopId, route_type: routeType, route: routeId, facility: facilityId, direction_id: directionId, activities } of attributes!.informed_entity!) {
+        if (tripId) {
+            // the trip's related route
+            const trip = state.trip?.get(tripId);
+            const routeId = trip?.relationships?.route?.data?.id;
+            if (routeId && !routeIds.has(routeId)) {
+                addRouteId(routeId);
+            }
+        } else if (facilityId) {
+            // all routes related to the facility's related stop
+            const facility = state.facility?.get(facilityId);
+            if (facility) {
+                const stopId = facility.relationships?.stop?.data?.id;
+                if (stopId) {
+                    forEachRouteIdInStop(stopId, state, addRouteId);
+                }
+            }
+        } else if (stopId) {
+            // add all routes related to the stop
+            forEachRouteIdInStop(stopId, state, addRouteId);
+        } else if (routeType) {
+            // add all routes of the matching type
+            for (const route of state?.route?.values() || []) {
+                if (route.attributes!.type === routeType) {
+                    addRouteId(route.id);
+                }
+            }
+        } else if (routeId) {
+            // add the route
+            addRouteId(routeId);
+        }
+        informedEntity.push({
+            trip: tripId,
+            stop: stopId,
+            routeType: routeType,
+            route: routeId,
+            facility: facilityId,
+            directionId,
+            activities: activities!,
+        });
+    }
+    return {
+        resource: {
+            id,
+            url: attributes!.url,
+            createdAt: attributes!.created_at!,
+            updatedAt: attributes!.updated_at!,
+            activePeriod: attributes!.active_period!.map(period => ({
+                start: period.start!,
+                end: period.end!
+            })),
+            effect: attributes!.effect!,
+            effectName: attributes!.effect_name,
+            header: attributes!.header!,
+            shortHeader: attributes!.short_header,
+            severity: attributes!.severity!,
+            cause: attributes!.cause!,
+            serviceEffect: attributes!.service_effect!,
+            lifecycle: attributes!.lifecycle!,
+            informedEntity,
+            timeframe: attributes!.timeframe,
+            image: attributes!.image,
+            imageAlternativeText: attributes!.image_alternative_text,
+            durationCertainty: attributes!.duration_certainty,
+            description: attributes!.description,
+            banner: attributes!.banner
+        },
+        routes
+    }
+}
+
+function matchesFilters(type: APIResourceType, { routes, stopId }: EventResource, filter: EventFilter) {
+    // if the filter does not contain the object's type
+    if (!filter.types.has(type)) {
         return false;
     }
-    if (routes.some(route => filter.routeIds && !filter.routeIds.has(route.id) || route.attributes?.type == null || filter.routeTypes && !filter.routeTypes.has(route.attributes.type))) {
+    // if the filter does not allow a related route
+    // is there not a related route which is related to the resource?
+    if (routes && routes.every(route => route
+        && (filter.routeIds
+            && !filter.routeIds.has(route.id)
+            || route.attributes?.type == null
+            || filter.routeTypes
+            && !filter.routeTypes.has(route.attributes.type))
+    )) {
+        return false;
+    }
+    if (stopId && !filter.stopIds.has(stopId)) {
         return false;
     }
     return true;
-}
-
-/**
- * Returns whether two objects are exactly equal.
- * 
- * If both objects are objects then each entry's equality will be checked recursively.
- */
-function areEqual(obj: any, other: any) {
-    if (obj === other) {
-        return true;
-    }
-    if (typeof obj !== typeof other) {
-        return false;
-    }
-    if (typeof obj === 'object') {
-        const keys = new Set<string>();
-        for (const key in obj) {
-            keys.add(key);
-            if (!areEqual(obj[key], other[key])) {
-                return false;
-            }
-        }
-        for (const key in other) {
-            if (!keys.has(key) || !areEqual(obj[key], other[key])) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
 }
 
 /*
@@ -227,6 +351,9 @@ function areEqual(obj: any, other: any) {
 
 class TrackerCache extends EventEmitter<EventMap> {
     #state: Partial<ResourceCache>;
+    get state() {
+        return this.#state;
+    }
     #associations: Partial<Record<APIResourceType, AssociateFunction>>;
     #requesters: RequestFunction[];
 
@@ -254,7 +381,7 @@ class TrackerCache extends EventEmitter<EventMap> {
                     const old = this.#state[type]?.get(id);
                     if (!old) {
                         this.add(resource);
-                    } else if (!areEqual(old, resource)) {
+                    } else if (!isDeepStrictEqual(old, resource)) {
                         if (type in updatedIds) {
                             updatedIds[type] = new Set();
                         }
@@ -301,6 +428,10 @@ class TrackerCache extends EventEmitter<EventMap> {
     reset(resources: Resource[]) {
         const cleared = new Set<ResourceType>();
         for (const resource of resources) {
+            // lazy solution to identical stops
+            if (resource.type === 'stop' && resource.attributes?.name && this.#state.stop && Array.from(this.#state.stop.values()).some(stop => stop.attributes?.name === resource.attributes?.name)) {
+                continue;
+            }
             const { type } = resource;
             const cache = this.#cacheOf(type);
             if (!cleared.has(type)) {
@@ -319,6 +450,10 @@ class TrackerCache extends EventEmitter<EventMap> {
     }
 
     add(resource: Resource) {
+        // lazy solution to identical stops
+        if (resource.type === 'stop' && resource.attributes?.name && this.#state.stop && Array.from(this.#state.stop.values()).some(stop => stop.attributes?.name === resource.attributes?.name)) {
+            return;
+        }
         const { type } = resource;
         const cache = this.#cacheOf(type);
         cache.set(resource.id, resource);
@@ -360,7 +495,15 @@ class TrackerCache extends EventEmitter<EventMap> {
         this.associate(type, (state, id) => {
             const fn = MAPPERS[type] as (resource: ResourceMap[T], state: Partial<ResourceCache>) => any;
             const resources = id ? state[type]?.get(id) || [] : Array.from(state[type]?.values() || []);
-            return (Array.isArray(resources) ? resources : [resources]).map(resource => fn(resource, state));
+            const result = [];
+            for (const resource of Array.isArray(resources) ? resources : [resources]) {
+                try {
+                    result.push(fn(resource, state))
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            return result;
         });
     }
 
@@ -402,35 +545,64 @@ class Tracker {
         this.#cache = new TrackerCache();
     }
 
+    #sendFilterEvents(oldFilter: EventFilter, newFilter: EventFilter, events: { [T in keyof EventPayloadMap]: (payload: EventPayloadMap[T]) => void }) {
+        const state = this.#cache.state;
+        // conbine types
+        const types = new Set<APIResourceType>();
+        for (const type of oldFilter.types) {
+            types.add(type);
+        }
+        for (const type of newFilter.types) {
+            types.add(type);
+        }
+        // for each type
+        for (const type of types) {
+            // get the cache for that type
+            const map = state[type];
+            if (map) {
+                // remove resources that matched old filters but do not match new filters
+                for (const resource of map.values()) {
+                    const fn = MAPPERS[type] as (resource: ResourceMap[APIResourceType], state: Partial<ResourceCache>) => EventResource<APIResource> | null;
+                    const mapped = fn(resource, state);
+                    if (mapped && matchesFilters(resource.type, mapped, oldFilter) && !matchesFilters(resource.type, mapped, newFilter)) {
+                        events.remove({ type, data: mapped });
+                    } else if (mapped && !matchesFilters(resource.type, mapped, oldFilter)) {
+                        events.add({ type, data: mapped });
+                    }
+                }
+            }
+        }
+    }
+
     attach(ws: WebSocket) {
-        const filters: EventFilter = {
+        let initialized = false;
+        const filter: EventFilter = {
             types: new Set(),
-            routeIds: new Set(),
-            routeTypes: new Set()
+            routeIds: null,
+            routeTypes: null,
+            stopIds: new Set()
         };
         function forward<T extends EventType>(event: T, { type, data }: PayloadMap[T]) {
             ws.send(JSON.stringify({ event, type, data }));
         }
         function reset({ type, data }: EventPayloadMap['reset']) {
-            data = data.filter(resource => matchesFilters(type, resource.routes, filters));
+            data = data.filter(resource => matchesFilters(type, resource, filter));
             if (data.length > 0) {
                 forward('reset', { type, data: data.map(er => er.resource) });
             }
         }
         function add({ type, data }: EventPayloadMap['add']) {
-            if (matchesFilters(type, data.routes, filters)) {
+            if (matchesFilters(type, data, filter)) {
                 forward('add', { type, data: data.resource });
             }
         }
         function update({ type, data }: EventPayloadMap['update']) {
-            if (matchesFilters(type, data.routes, filters)) {
+            if (matchesFilters(type, data, filter)) {
                 forward('update', { type, data: data.resource });
             }
         }
         function remove({ type, data }: EventPayloadMap['remove']) {
-            if (matchesFilters(type, data.routes, filters)) {
-                forward('remove', { type, data: data.resource });
-            }
+            forward('remove', { type, data: { id: data.resource.id } });
         }
         ws.once("close", () => {
             this.#cache.removeListener('reset', reset);
@@ -442,16 +614,28 @@ class Tracker {
         this.#cache.on('add', add);
         this.#cache.on('update', update);
         this.#cache.on('remove', remove);
+        // filter is changed
         ws.addEventListener('message', (event) => {
+            const oldFilter = {} as EventFilter;
+            Object.assign(oldFilter, filter);
             const json = event.data.toString();
             try {
                 const data: WebsocketPayload = JSON.parse(json);
-                filters.types = new Set(data.types);
-                filters.routeIds = data.routeIds ? new Set(data.routeIds) : null;
-                filters.routeTypes = data.routeTypes ? new Set(data.routeTypes) : null;
-                // sent initial reset events to sync data
-                for (const type of filters.types) {
-                    reset({ type, data: this.#cache.getEventResources(type) });
+                filter.types = new Set(data.types);
+                filter.routeIds = data.routeIds ? new Set(data.routeIds) : null;
+                filter.routeTypes = data.routeTypes ? new Set(data.routeTypes) : null;
+                if (data.stopIds) {
+                    filter.stopIds = new Set(data.stopIds);
+                }
+                // sync resources
+                if (initialized) {
+                    this.#sendFilterEvents(oldFilter, filter, { reset, add, update, remove });
+                } else {
+                    // sent initial reset events to sync data
+                    for (const type of filter.types) {
+                        reset({ type, data: this.#cache.getEventResources(type) });
+                    }
+                    initialized = true;
                 }
             } catch (e) {
                 console.error(e);
@@ -463,23 +647,24 @@ class Tracker {
      * Initializes tracking.
      */
     async track() {
-        /*
-         * Collect the following data:
-         * - Vehicles - For position/speed/direction & any other data we might want to show
-         * - Schedules - For schedules times
-         * - Predictions - For predicted times
-         * - Alerts - For alerts
-         * Maybe also the following data at significantly less frequent intervals:
-         * - Routes, Shapes, Stops, Lines
-         */
+        const routes = await this.client.getRoutes({ 'filter[type]': ROUTES_TYPES.join(','), 'fields[route]': '' });
+        const routeIdFilter = routes.data.map(route => route.id).join(',');
         this.#cache.track('route');
         this.#cache.track('vehicle');
         this.#cache.track('stop');
-        const routeTypeFilter = ROUTES_TYPES.join(',');
-        const routesfn = this.client.getRoutes.bind(this.client, { 'filter[type]': routeTypeFilter, include: 'route_patterns.representative_trip.shape,route_patterns.representative_trip.stops' });
+        this.#cache.track('schedule');
+        this.#cache.track('prediction');
+        this.#cache.track('alert');
+        const routesfn = this.client.getRoutes.bind(this.client, { 'filter[id]': routeIdFilter, include: 'route_patterns.representative_trip.shape,route_patterns.representative_trip.stops' });
         await this.#cache.addRequester(routesfn);
-        const vehicles = this.client.streamVehicles({ 'filter[route_type]': routeTypeFilter });
-        this.#cache.bind(vehicles);
+        const scheduleStream = this.client.streamSchedules({ 'filter[route]': routeIdFilter });
+        this.#cache.bind(scheduleStream);
+        const predictionStream = this.client.streamPredictions({ 'filter[route]': routeIdFilter });
+        this.#cache.bind(predictionStream);
+        const vehicleStream = this.client.streamVehicles({ 'filter[route]': routeIdFilter });
+        this.#cache.bind(vehicleStream);
+        const alertStream = this.client.streamAlerts({ 'filter[route]': routeIdFilter });
+        this.#cache.bind(alertStream);
     }
 }
 

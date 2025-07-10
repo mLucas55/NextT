@@ -1353,7 +1353,7 @@ interface PredictionResource extends Resource<'prediction'> {
          * | 120   | A terminal/reverse trip departure for a trip that has NOT started and a train is awaiting departure at the origin |
          * | 360   | A terminal/reverse trip for a trip that has NOT started and a train is completing a previous trip |
          */
-        departureUncertainty?: number | null;
+        departure_uncertainty?: number | null;
         /**
          * When the vehicle is now predicted to depart.  `null` if the last stop (`*\/relationships/stop/data/id`) on the trip (`*\/relationships/trip/data/id`). See [GTFS `Realtime` `FeedMessage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `departure`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate).
          * Format is ISO8601.
@@ -1382,7 +1382,7 @@ interface PredictionResource extends Resource<'prediction'> {
          * | 120  | A terminal/reverse trip departure for a trip that has NOT started and a train is awaiting departure at the origin |
          * | 360  | A terminal/reverse trip for a trip that has NOT started and a train is completing a previous trip |
          */
-        arrivalUncertainty?: number | null;
+        arrival_uncertainty?: number | null;
         /**
          * When the vehicle is now predicted to arrive.  `null` if the first stop (`*\/relationships/stop/data/id`) on the trip (`*\/relationships/trip/data/id`). See [GTFS `Realtime` `FeedMessage` `FeedEntity` `TripUpdate` `StopTimeUpdate` `arrival`](https://github.com/google/transit/blob/master/gtfs-realtime/spec/en/reference.md#message-stoptimeupdate).
          * Format is ISO8601.
