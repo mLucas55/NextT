@@ -22,7 +22,7 @@ const MAPPERS = {
     schedule: mapSchedule,
     prediction: mapPrediction,
     alert: mapAlert
-} as const satisfies { [P in APIResourceType]: (resource: ResourceMap[P], state: Partial<ResourceCache>) => EventResource<APIResourceMap[P]> };
+} as const satisfies { [P in APIResourceType]: (resource: ResourceMap[P], state: Partial<ResourceCache>) => EventResource<APIResourceMap[P]> | null };
 
 /*
  * ---------
@@ -165,19 +165,45 @@ function mapVehicle({ id, attributes, relationships }: VehicleResource, state: P
     };
 }
 
-function mapStop({ id, attributes }: StopResource, state: Partial<ResourceCache>) {
+function mapStop({ id, attributes, relationships }: StopResource, state: Partial<ResourceCache>, child = false): EventResource<any> | null {
+    if (!child && relationships?.parent_station?.data) {
+        return null;
+    }
+    const childStopIds = new Set<string>();
+    const childStops = [];
     const routeIds = new Set<string>();
     const routes: RouteResource[] = [];
-    forEachRouteIdInStop(id, state, (routeId) => {
-        if (!routeIds.has(routeId)) {
-            routeIds.add(routeId);
-            routes.push(state.route!.get(routeId)!);
+    if (child) {
+        forEachRouteIdInStop(id, state, (routeId) => {
+            if (!routeIds.has(routeId)) {
+                routeIds.add(routeId);
+                routes.push(state.route!.get(routeId)!);
+            }
+        });
+    } else {
+        for (const stop of state.stop?.values() || []) {
+            if (stop.relationships?.parent_station?.data?.id === id) {
+                if (!childStopIds.has(stop.id)) {
+                    childStopIds.add(stop.id);
+                    const obj = mapStop(stop, state, true);
+                    if (obj) {
+                        childStops.push(obj.resource);
+                        for (const { id: routeId } of obj.routes || []) {
+                            if (!routeIds.has(routeId)) {
+                                routeIds.add(routeId);
+                                routes.push(state.route!.get(routeId)!);
+                            }
+                        }
+                    }
+                }
+            }
         }
-    });
+    }
     return {
         resource: {
             id,
             routeIds: Array.from(routeIds),
+            childStops: childStops,
             name: attributes!.name!,
             latitude: attributes!.latitude!,
             longitude: attributes!.longitude!,
@@ -428,10 +454,6 @@ class TrackerCache extends EventEmitter<EventMap> {
     reset(resources: Resource[]) {
         const cleared = new Set<ResourceType>();
         for (const resource of resources) {
-            // lazy solution to identical stops
-            if (resource.type === 'stop' && resource.attributes?.name && this.#state.stop && Array.from(this.#state.stop.values()).some(stop => stop.attributes?.name === resource.attributes?.name)) {
-                continue;
-            }
             const { type } = resource;
             const cache = this.#cacheOf(type);
             if (!cleared.has(type)) {
@@ -450,10 +472,6 @@ class TrackerCache extends EventEmitter<EventMap> {
     }
 
     add(resource: Resource) {
-        // lazy solution to identical stops
-        if (resource.type === 'stop' && resource.attributes?.name && this.#state.stop && Array.from(this.#state.stop.values()).some(stop => stop.attributes?.name === resource.attributes?.name)) {
-            return;
-        }
         const { type } = resource;
         const cache = this.#cacheOf(type);
         cache.set(resource.id, resource);
@@ -493,12 +511,15 @@ class TrackerCache extends EventEmitter<EventMap> {
 
     track<T extends APIResourceType>(type: T) {
         this.associate(type, (state, id) => {
-            const fn = MAPPERS[type] as (resource: ResourceMap[T], state: Partial<ResourceCache>) => any;
+            const fn = MAPPERS[type] as (resource: ResourceMap[T], state: Partial<ResourceCache>) => EventResource<APIResourceMap[T]> | null;
             const resources = id ? state[type]?.get(id) || [] : Array.from(state[type]?.values() || []);
             const result = [];
             for (const resource of Array.isArray(resources) ? resources : [resources]) {
                 try {
-                    result.push(fn(resource, state))
+                    const obj = fn(resource, state);
+                    if (obj) {
+                        result.push(obj)
+                    }
                 } catch (e) {
                     console.error(e);
                 }
@@ -564,10 +585,12 @@ class Tracker {
                 for (const resource of map.values()) {
                     const fn = MAPPERS[type] as (resource: ResourceMap[APIResourceType], state: Partial<ResourceCache>) => EventResource<APIResource> | null;
                     const mapped = fn(resource, state);
-                    if (mapped && matchesFilters(resource.type, mapped, oldFilter) && !matchesFilters(resource.type, mapped, newFilter)) {
-                        events.remove({ type, data: mapped });
-                    } else if (mapped && !matchesFilters(resource.type, mapped, oldFilter)) {
-                        events.add({ type, data: mapped });
+                    if (mapped) {
+                        if (matchesFilters(resource.type, mapped, oldFilter) && !matchesFilters(resource.type, mapped, newFilter)) {
+                            events.remove({ type, data: mapped });
+                        } else if (!matchesFilters(resource.type, mapped, oldFilter)) {
+                            events.add({ type, data: mapped });
+                        }
                     }
                 }
             }
@@ -655,7 +678,7 @@ class Tracker {
         this.#cache.track('schedule');
         this.#cache.track('prediction');
         this.#cache.track('alert');
-        const routesfn = this.client.getRoutes.bind(this.client, { 'filter[id]': routeIdFilter, include: 'route_patterns.representative_trip.shape,route_patterns.representative_trip.stops' });
+        const routesfn = this.client.getRoutes.bind(this.client, { 'filter[id]': routeIdFilter, include: 'route_patterns.representative_trip.shape,route_patterns.representative_trip.stops.parent_station' });
         await this.#cache.addRequester(routesfn);
         const scheduleStream = this.client.streamSchedules({ 'filter[route]': routeIdFilter });
         this.#cache.bind(scheduleStream);
