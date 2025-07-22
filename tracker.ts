@@ -63,7 +63,7 @@ interface EventResource<T extends APIIdentifier = APIIdentifier> {
 interface StreamEventMap<T extends APIResourceType = APIResourceType> extends Record<EventType, EventResource[] | EventResource> {
     reset: EventResource<APIResourceMap[T]>[];
     add: EventResource<APIResourceMap[T]>[];
-    update: EventResource<APIResourceMap[T]>;
+    update: EventResource<APIResourceMap[T]>[];
     remove: EventResource[];
 }
 type EventPayloadMap<T extends APIResourceType = APIResourceType> = {
@@ -76,7 +76,7 @@ type EventPayloadMap<T extends APIResourceType = APIResourceType> = {
 type PayloadMap<T extends APIResourceType = APIResourceType> = {
     [P in keyof EventPayloadMap]: {
         type: T;
-        data: P extends 'reset' | 'add' ? APIResourceMap[T][] : P extends 'remove' ? APIIdentifier[] : APIResourceMap[T];
+        data: StreamEventMap[P][number]['resource'][];
     };
 }
 type EventMap<T extends APIResourceType = APIResourceType> = {
@@ -606,10 +606,8 @@ class TrackerCache extends EventEmitter<EventMap> {
         // send update event if applicable
         const payload = this.getPayload(type, resource.id);
         if (payload) {
-            for (const data of payload.data) {
-                this.#updateAssociations('update', payload);
-                this.emit('update', { type: payload.type, data, filtered: true });
-            }
+            this.#updateAssociations('update', payload);
+            this.emit('update', { type: payload.type, data: payload.data, filtered: true });
         }
     }
 
@@ -705,6 +703,25 @@ class Tracker {
             const addedResources = added[type] ??= [];
             const addedResourceIds = new Set();
             const routes = routeAssociations.get(type);
+            // remove route IDs which are no longer present
+            for (const routeId of oldRouteIds) {
+                if (!newRouteIds.has(routeId)) {
+                    const associated = routes?.get(routeId) ?? [];
+                    for (const resourceId of associated) {
+                        if (!removedResourceIds.has(resourceId)) {
+                            const payload = this.#cache.getPayload(type, resourceId);
+                            if (payload) {
+                                for (const resource of payload.data) {
+                                    if (!matchesFilters(type, resource, newFilter)) {
+                                        removedResources.push(resource);
+                                        removedResourceIds.add(resourceId);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // add route IDs which were not previously present
             for (const routeId of newRouteIds) {
                 if (!oldRouteIds.has(routeId)) {
@@ -720,26 +737,22 @@ class Tracker {
                     }
                 }
             }
-            // remove route IDs which are no longer present
-            for (const routeId of oldRouteIds) {
-                if (!newRouteIds.has(routeId)) {
-                    const associated = routes?.get(routeId) ?? [];
+            const stops = stopAssociations.get(type);
+            // remove stop IDs which are no longer present
+            for (const stopId of oldFilter.stopIds) {
+                if (!newFilter.stopIds.has(stopId)) {
+                    const associated = stops?.get(stopId) ?? [];
                     for (const resourceId of associated) {
-                        if (!removedResourceIds.has(resourceId) && !addedResourceIds.has(resourceId)) {
+                        if (!removedResourceIds.has(resourceId)) {
                             const payload = this.#cache.getPayload(type, resourceId);
                             if (payload) {
-                                for (const resource of payload.data) {
-                                    if (!matchesFilters(type, resource, newFilter)) {
-                                        removedResources.push(resource);
-                                        removedResourceIds.add(resourceId);
-                                    }
-                                }
+                                removedResources.push(...payload.data);
+                                removedResourceIds.add(resourceId);
                             }
                         }
                     }
                 }
             }
-            const stops = stopAssociations.get(type);
             // add stop IDs which were not previously present
             for (const stopId of newFilter.stopIds) {
                 if (!oldFilter.stopIds.has(stopId)) {
@@ -750,21 +763,6 @@ class Tracker {
                             if (payload) {
                                 addedResources.push(...payload.data);
                                 addedResourceIds.add(resourceId);
-                            }
-                        }
-                    }
-                }
-            }
-            // remove stop IDs which are no longer present
-            for (const stopId of oldFilter.stopIds) {
-                if (!newFilter.stopIds.has(stopId)) {
-                    const associated = stops?.get(stopId) ?? [];
-                    for (const resourceId of associated) {
-                        if (!removedResourceIds.has(resourceId) && !addedResourceIds.has(resourceId)) {
-                            const payload = this.#cache.getPayload(type, resourceId);
-                            if (payload) {
-                                removedResources.push(...payload.data);
-                                removedResourceIds.add(resourceId);
                             }
                         }
                     }
@@ -816,8 +814,11 @@ class Tracker {
             }
         }
         function update({ type, data, filtered }: EventPayloadMap['update']) {
-            if (!filtered || matchesFilters(type, data, filter)) {
-                forward('update', { type, data: data.resource });
+            if (filtered) {
+                data = data.filter(resource => matchesFilters(type, resource, filter));
+            }
+            if (data.length > 0) {
+                forward('update', { type, data: data.map(er => er.resource) });
             }
         }
         function remove({ type, data, filtered }: EventPayloadMap['remove']) {
