@@ -858,7 +858,7 @@ class Tracker {
                 } else {
                     // sent initial reset events to sync data
                     for (const type of filter.types) {
-                        reset({ type, data: this.#cache.getEventResources(type) });
+                        reset({ type, data: this.#cache.getEventResources(type), filtered: true });
                     }
                     initialized = true;
                 }
