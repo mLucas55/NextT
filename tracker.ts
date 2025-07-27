@@ -264,6 +264,7 @@ function mapSchedule({ id, attributes, relationships }: ScheduleResource, state:
         resource: {
             id,
             stopId: relationships!.stop!.data!.id,
+            routeId: relationships!.route!.data!.id,
             timepoint: attributes!.timepoint,
             stopSequence: attributes!.stop_sequence,
             stopHeadsign: attributes!.stop_headsign,
