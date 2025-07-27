@@ -438,17 +438,14 @@ class TrackerCache extends EventEmitter<EventMap> {
     }
     #associations: Partial<Record<APIResourceType, AssociateFunction>>;
     #requesters: RequestFunction[];
-    #latestTime: number;
-    get latestTime() {
-        return this.#latestTime;
-    }
+    // #latestTime: number;
 
     constructor() {
         super();
         this.#state = {};
         this.#associations = {};
         this.#requesters = [];
-        this.#latestTime = Date.now()
+        // this.#latestTime = Date.now()
         this.setMaxListeners(Infinity);
         // call requesters every 5 minutes
         setTimeout(this.#sendRequests.bind(this), 300000);
@@ -564,14 +561,14 @@ class TrackerCache extends EventEmitter<EventMap> {
                 }
             }
         }
-        if (type == 'prediction') {
-            for (const prediction of data as EventResource<APIResourceMap['prediction']>[]) {
-                let arrivalTime = prediction.resource.arrivalTime ? Date.parse(prediction.resource.arrivalTime) : null;
-                if (arrivalTime && arrivalTime > this.#latestTime - 120000) {
-                    this.#latestTime = arrivalTime + 120000;
-                }
-            }
-        }
+        // if (type == 'prediction') {
+        //     for (const prediction of data as EventResource<APIResourceMap['prediction']>[]) {
+        //         let arrivalTime = prediction.resource.arrivalTime ? Date.parse(prediction.resource.arrivalTime) : null;
+        //         if (arrivalTime && arrivalTime > this.#latestTime - 120000) {
+        //             this.#latestTime = arrivalTime + 120000;
+        //         }
+        //     }
+        // }
     }
 
     getPayload(type: ResourceType, id?: string): { type: APIResourceType, data: EventResource<APIResource>[] } | undefined {
@@ -601,13 +598,13 @@ class TrackerCache extends EventEmitter<EventMap> {
             const payload = this.getPayload(type);
             if (payload) {
                 this.#updateAssociations('reset', payload);
-                if (type === 'prediction') {
-                    for (const schedule of this.#state.schedule?.values() ?? []) {
-                        if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
-                            this.remove({ type: schedule.type, id: schedule.id });
-                        }
-                    }
-                }
+                // if (type === 'prediction') {
+                //     for (const schedule of this.#state.schedule?.values() ?? []) {
+                //         if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+                //             this.remove({ type: schedule.type, id: schedule.id });
+                //         }
+                //     }
+                // }
                 this.emit('reset', { ...payload, filtered: true });
             }
         }
@@ -621,13 +618,13 @@ class TrackerCache extends EventEmitter<EventMap> {
         const payload = this.getPayload(type, resource.id);
         if (payload) {
             this.#updateAssociations('add', payload);
-            if (type === 'prediction') {
-                for (const schedule of this.#state.schedule?.values() ?? []) {
-                    if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
-                        this.remove({ type: schedule.type, id: schedule.id });
-                    }
-                }
-            }
+            // if (type === 'prediction') {
+            //     for (const schedule of this.#state.schedule?.values() ?? []) {
+            //         if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+            //             this.remove({ type: schedule.type, id: schedule.id });
+            //         }
+            //     }
+            // }
             this.emit('add', { type: payload.type, data: payload.data, filtered: true });
         }
     }
@@ -640,13 +637,13 @@ class TrackerCache extends EventEmitter<EventMap> {
         const payload = this.getPayload(type, resource.id);
         if (payload) {
             this.#updateAssociations('update', payload);
-            if (type === 'prediction') {
-                for (const schedule of this.#state.schedule?.values() ?? []) {
-                    if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
-                        this.remove({ type: schedule.type, id: schedule.id });
-                    }
-                }
-            }
+            // if (type === 'prediction') {
+            //     for (const schedule of this.#state.schedule?.values() ?? []) {
+            //         if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+            //             this.remove({ type: schedule.type, id: schedule.id });
+            //         }
+            //     }
+            // }
             this.emit('update', { type: payload.type, data: payload.data, filtered: true });
         }
     }
@@ -922,8 +919,8 @@ class Tracker {
         this.#cache.track('alert');
         const routesfn = this.client.getRoutes.bind(this.client, { 'filter[id]': routeIdFilter, include: 'route_patterns.representative_trip.shape,route_patterns.representative_trip.stops.parent_station' });
         await this.#cache.addRequester(routesfn);
-        const scheduleStream = this.client.streamSchedules({ 'filter[route]': routeIdFilter });
-        this.#cache.bind(scheduleStream);
+        // const scheduleStream = this.client.streamSchedules({ 'filter[route]': routeIdFilter });
+        // this.#cache.bind(scheduleStream);
         const predictionStream = this.client.streamPredictions({ 'filter[route]': routeIdFilter });
         this.#cache.bind(predictionStream);
         const vehicleStream = this.client.streamVehicles({ 'filter[route]': routeIdFilter });
