@@ -22,7 +22,7 @@ const MAPPERS = {
     schedule: mapSchedule,
     prediction: mapPrediction,
     alert: mapAlert
-} as const satisfies { [P in APIResourceType]: (resource: ResourceMap[P], state: Partial<ResourceCache>) => EventResource<APIResourceMap[P]> | null };
+} as const satisfies { [P in APIResourceType]: (resource: ResourceMap[P], cache: TrackerCache) => EventResource<APIResourceMap[P]> | null };
 
 /*
  * ---------
@@ -41,7 +41,7 @@ interface APIResourceMap extends IAPIResourceMap {
     route: ReturnType<typeof mapRoute>['resource'];
     vehicle: ReturnType<typeof mapVehicle>['resource'];
     stop: NonNullable<ReturnType<typeof mapStop>>['resource'];
-    schedule: ReturnType<typeof mapSchedule>['resource'];
+    schedule: NonNullable<ReturnType<typeof mapSchedule>>['resource'];
     prediction: ReturnType<typeof mapPrediction>['resource'];
     alert: ReturnType<typeof mapAlert>['resource'];
 }
@@ -139,7 +139,7 @@ function forEachRouteIdInStop(stopId: string, state: Partial<ResourceCache>, cal
     }
 }
 
-function mapRoute(route: RouteResource, state: Partial<ResourceCache>) {
+function mapRoute(route: RouteResource, { state }: TrackerCache) {
     const { id, attributes } = route;
     // get related shapes
     const shapes = [];
@@ -169,7 +169,7 @@ function mapRoute(route: RouteResource, state: Partial<ResourceCache>) {
     };
 }
 
-function mapVehicle({ id, attributes, relationships }: VehicleResource, state: Partial<ResourceCache>) {
+function mapVehicle({ id, attributes, relationships }: VehicleResource, { state }: TrackerCache) {
     const route = state.route?.get(relationships!.route!.data!.id);
     return {
         resource: {
@@ -196,10 +196,11 @@ function mapVehicle({ id, attributes, relationships }: VehicleResource, state: P
     };
 }
 
-function mapStop({ id, attributes, relationships }: StopResource, state: Partial<ResourceCache>, child = false): EventResource<any> | null {
+function mapStop({ id, attributes, relationships }: StopResource, cache: TrackerCache, child = false): EventResource<any> | null {
     if (!child && relationships?.parent_station?.data) {
         return null;
     }
+    const { state } = cache;
     const childIds = new Set<string>();
     const children = [];
     const routeIds = new Set<string>();
@@ -219,7 +220,7 @@ function mapStop({ id, attributes, relationships }: StopResource, state: Partial
             if (stop.relationships?.parent_station?.data?.id === id) {
                 if (!childIds.has(stop.id)) {
                     childIds.add(stop.id);
-                    const obj = mapStop(stop, state, true);
+                    const obj = mapStop(stop, cache, true);
                     if (obj) {
                         children.push(obj.resource);
                         for (const { id: routeId } of obj.routes || []) {
@@ -259,12 +260,16 @@ function mapStop({ id, attributes, relationships }: StopResource, state: Partial
     };
 }
 
-function mapSchedule({ id, attributes, relationships }: ScheduleResource, state: Partial<ResourceCache>) {
+function mapSchedule({ id, attributes, relationships }: ScheduleResource) {
+    if (!attributes?.arrival_time) {
+        return null;
+    }
     return {
         resource: {
             id,
             stopId: relationships!.stop!.data!.id,
             routeId: relationships!.route!.data!.id,
+            predictionId: relationships!.prediction?.data?.id,
             timepoint: attributes!.timepoint,
             stopSequence: attributes!.stop_sequence,
             stopHeadsign: attributes!.stop_headsign,
@@ -278,7 +283,7 @@ function mapSchedule({ id, attributes, relationships }: ScheduleResource, state:
     }
 }
 
-function mapPrediction({ id, attributes, relationships }: PredictionResource, state: Partial<ResourceCache>) {
+function mapPrediction({ id, attributes, relationships }: PredictionResource) {
     return {
         resource: {
             id,
@@ -301,7 +306,7 @@ function mapPrediction({ id, attributes, relationships }: PredictionResource, st
     }
 }
 
-function mapAlert({ id, attributes }: AlertResource, state: Partial<ResourceCache>) {
+function mapAlert({ id, attributes }: AlertResource, { state }: TrackerCache) {
     const informedEntity = [];
     const routeIds = new Set<string>();
     const routes: RouteResource[] = [];
@@ -433,12 +438,17 @@ class TrackerCache extends EventEmitter<EventMap> {
     }
     #associations: Partial<Record<APIResourceType, AssociateFunction>>;
     #requesters: RequestFunction[];
+    #latestTime: number;
+    get latestTime() {
+        return this.#latestTime;
+    }
 
     constructor() {
         super();
         this.#state = {};
         this.#associations = {};
         this.#requesters = [];
+        this.#latestTime = Date.now()
         this.setMaxListeners(Infinity);
         // call requesters every 5 minutes
         setTimeout(this.#sendRequests.bind(this), 300000);
@@ -554,6 +564,14 @@ class TrackerCache extends EventEmitter<EventMap> {
                 }
             }
         }
+        if (type == 'prediction') {
+            for (const prediction of data as EventResource<APIResourceMap['prediction']>[]) {
+                let arrivalTime = prediction.resource.arrivalTime ? Date.parse(prediction.resource.arrivalTime) : null;
+                if (arrivalTime && arrivalTime > this.#latestTime - 120000) {
+                    this.#latestTime = arrivalTime + 120000;
+                }
+            }
+        }
     }
 
     getPayload(type: ResourceType, id?: string): { type: APIResourceType, data: EventResource<APIResource>[] } | undefined {
@@ -583,6 +601,13 @@ class TrackerCache extends EventEmitter<EventMap> {
             const payload = this.getPayload(type);
             if (payload) {
                 this.#updateAssociations('reset', payload);
+                if (type === 'prediction') {
+                    for (const schedule of this.#state.schedule?.values() ?? []) {
+                        if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+                            this.remove({ type: schedule.type, id: schedule.id });
+                        }
+                    }
+                }
                 this.emit('reset', { ...payload, filtered: true });
             }
         }
@@ -596,6 +621,13 @@ class TrackerCache extends EventEmitter<EventMap> {
         const payload = this.getPayload(type, resource.id);
         if (payload) {
             this.#updateAssociations('add', payload);
+            if (type === 'prediction') {
+                for (const schedule of this.#state.schedule?.values() ?? []) {
+                    if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+                        this.remove({ type: schedule.type, id: schedule.id });
+                    }
+                }
+            }
             this.emit('add', { type: payload.type, data: payload.data, filtered: true });
         }
     }
@@ -608,6 +640,13 @@ class TrackerCache extends EventEmitter<EventMap> {
         const payload = this.getPayload(type, resource.id);
         if (payload) {
             this.#updateAssociations('update', payload);
+            if (type === 'prediction') {
+                for (const schedule of this.#state.schedule?.values() ?? []) {
+                    if (schedule.attributes?.arrival_time && Date.parse(schedule.attributes.arrival_time) <= this.#latestTime) {
+                        this.remove({ type: schedule.type, id: schedule.id });
+                    }
+                }
+            }
             this.emit('update', { type: payload.type, data: payload.data, filtered: true });
         }
     }
@@ -625,12 +664,12 @@ class TrackerCache extends EventEmitter<EventMap> {
 
     track<T extends APIResourceType>(type: T) {
         this.associate(type, (state, id) => {
-            const fn = MAPPERS[type] as (resource: ResourceMap[T], state: Partial<ResourceCache>) => EventResource<APIResourceMap[T]> | null;
+            const fn = MAPPERS[type] as (resource: ResourceMap[T], cache: TrackerCache) => EventResource<APIResourceMap[T]> | null;
             const resources = id ? state[type]?.get(id) || [] : Array.from(state[type]?.values() || []);
             const result = [];
             for (const resource of Array.isArray(resources) ? resources : [resources]) {
                 try {
-                    const obj = fn(resource, state);
+                    const obj = fn(resource, this);
                     if (obj) {
                         result.push(obj)
                     }
