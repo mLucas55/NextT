@@ -1,6 +1,6 @@
 # NextT
 ## Overview
-This is repository for the backend of NextT. This application is built in [Node.js](https://nodejs.org) using [Express.js](https://expressjs.com/) as well as [TypeScript](https://www.typescriptlang.org/). This server primary acts as a proxy to the MBTA API and sends collected data to the frontend application in real-time.
+This is repository for the backend of NextT. This application is built in [Node.js](https://nodejs.org) using [Express.js](https://expressjs.com/) as well as [TypeScript](https://www.typescriptlang.org/). This server primary acts as a proxy to the MBTA API and sends collected data to the frontend application in real-time. The flutter application can be found [here](https://github.com/eric-livezey/nextt_app).
 ## Structure
 The structure of this repository is actually quite simple. There are only 4 files with code in them.
 - [app.ts](app.ts) - Serves and the primary entry point to the application.
